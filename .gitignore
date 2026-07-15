@@ -1,0 +1,23 @@
+# dependencies
+/node_modules
+
+# next.js build output
+/.next/
+/out/
+
+# local database (dev-only SQLite file; anonymized seed data lives in /data/seed and is committed)
+*.db
+*.db-journal
+local.db
+
+# env files (Turso credentials, REAL_DATA_DIR, etc. — never committed)
+.env
+.env*.local
+
+# local Claude Code tool settings (machine-specific, not project config)
+.claude/settings.local.json
+
+# misc
+.DS_Store
+Thumbs.db
+npm-debug.log*

@@ -1,0 +1,31 @@
+{
+  "name": "renewal-screening-workbench",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "anonymize": "tsx scripts/anonymize-seed-data.ts",
+    "validate-seed": "tsx scripts/validate-seed-data.ts",
+    "seed-db": "tsx scripts/generate-sql-dump.ts",
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.4",
+    "drizzle-orm": "^0.45.2",
+    "next": "^13.4.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "xlsx": "^0.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.17",
+    "autoprefixer": "^10.4.14",
+    "playwright": "^1.61.1",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.4.7",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}
