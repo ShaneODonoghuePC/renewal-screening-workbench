@@ -5,6 +5,8 @@ import { withPolicyCountry } from '@/lib/session'
 import { isValidStatusTransition } from '@/lib/statusWorkflow'
 import { eq } from 'drizzle-orm/sql'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }

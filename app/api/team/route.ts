@@ -4,6 +4,8 @@ import { policies, reviewStates } from '@/lib/db/schema'
 import { withSession } from '@/lib/session'
 import { and, eq, inArray } from 'drizzle-orm/sql'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   return withSession(request, async (session) => {
     const items = await db

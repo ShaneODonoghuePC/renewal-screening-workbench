@@ -4,6 +4,8 @@ import { policies } from '@/lib/db/schema'
 import { withPolicyCountry } from '@/lib/session'
 import { eq } from 'drizzle-orm/sql'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
