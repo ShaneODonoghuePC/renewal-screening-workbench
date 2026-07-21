@@ -87,6 +87,32 @@ function companyFinancialReason(policy: RiskQualityInput): string {
   return fired.length > 0 ? fired.join(', ') : 'no flags raised'
 }
 
+// Historical grade, thresholded off the mocked loss ratio itself -- the same way
+// computeOperationalGrade/computeCompanyFinancialGrade threshold off real flag counts.
+// Thresholds are an assumption (mid-50s to low-60s loss ratio is a normal/healthy range
+// for commercial P&C), matched to the shipped distribution (mean ~55%, SD ~17pt) so the
+// split lands roughly where A/B/C should for this dataset -- easy to retune later.
+function computeHistoricalGrade(lossRatio: number): Grade {
+  // Threshold on the rounded percentage rather than the raw fraction, so the grade band
+  // can never disagree with the displayed Loss ratio % right at a boundary (e.g. a raw
+  // 54.96% displaying as "55%" while still grading as if it were under the B cutoff).
+  const pct = Math.round(lossRatio * 100)
+  if (pct > 75) return 'C'
+  if (pct >= 55) return 'B'
+  return 'A'
+}
+
+// Historical momentum, derived from the same loss-ratio trend as the sparkline (rather
+// than an independent random pick) so the arrow and the trend line always agree. Higher
+// loss ratio is worse, so a rising trend is "down" (attention-worthy) and a falling one
+// is "up" (improving) -- same up/down semantics as the other two dimensions' arrows.
+function computeHistoricalMomentum(trend: [number, number, number]): Momentum {
+  const deltaPts = Math.round((trend[2] - trend[0]) * 100)
+  if (deltaPts >= 3) return 'down'
+  if (deltaPts <= -3) return 'up'
+  return 'stable'
+}
+
 // One-line "why" for the Historical grade, tied to the mocked loss-ratio trend.
 function historicalReason(grade: Grade, trend: [number, number, number]): string {
   const deltaPts = Math.round((trend[2] - trend[0]) * 100)
@@ -128,7 +154,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
-const GRADES: Grade[] = ['A', 'A', 'B', 'B', 'C']
 const MOMENTA: Momentum[] = ['stable', 'stable', 'stable', 'up', 'down']
 
 function pick<T>(rand: () => number, arr: T[]): T {
@@ -150,9 +175,6 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   const companyFinancialMomentum = pick(rand, MOMENTA)
   const companyFinancialGrade = verified ? computeCompanyFinancialGrade(policy) : null
 
-  const historicalGrade = pick(rand, GRADES)
-  const historicalMomentum = pick(rand, MOMENTA)
-
   // Loss ratio first, from a bell curve centered on a plausible commercial P&C target
   // (60% mean, 15pt SD -- an assumption, easy to retune since this is mocked), clamped to
   // a realistic range. claimsPaid is then derived from it so the three Historical
@@ -173,6 +195,11 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   const midRatio = clamp(lossRatio - stepB, 0.1, 1.4)
   const oldRatio = clamp(midRatio - stepA, 0.1, 1.4)
   const lossRatioTrend: [number, number, number] = [oldRatio, midRatio, lossRatio]
+
+  // Grade and momentum both derive from lossRatio/lossRatioTrend now, so the grade, the
+  // "why" text, the sparkline, and the arrow can never visibly contradict each other.
+  const historicalGrade = computeHistoricalGrade(lossRatio)
+  const historicalMomentum = computeHistoricalMomentum(lossRatioTrend)
 
   const worsening = lossRatioTrend[2] > lossRatioTrend[1] && lossRatioTrend[1] > lossRatioTrend[0]
   // Watch: the 3-cycle loss-ratio trend is worsening but that hasn't (yet) moved the grade this cycle.
