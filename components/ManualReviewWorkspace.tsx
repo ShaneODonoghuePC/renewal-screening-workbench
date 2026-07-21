@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { STATUS_TRANSITIONS } from '@/lib/statusWorkflow'
-import { formatCurrency, EMPTY_VALUE } from '@/lib/format'
+import { formatCurrency, formatCompactCurrency, EMPTY_VALUE } from '@/lib/format'
 import { getRiskQuality, computeRecommendation, type Grade, type Momentum } from '@/lib/mockRiskQuality'
 import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel'
 import SeverityBadge from '@/components/SeverityBadge'
@@ -27,13 +27,14 @@ type Comment = { id: string; policyId: string; userId: string; text: string; cre
 type ActivityEntry = { id: string; policyId: string; eventType: string; userId: string | null; detail: string | null; createdAt: string }
 type Identity = { id: string; name: string; country: string }
 
-// One-click shortcuts for the most common transitions; the dropdown below covers
-// everything else (Closed, and the initial New -> In Review step).
-const QUICK_TRANSITIONS: Array<{ target: string; label: string }> = [
-  { target: 'Renewed', label: 'Renew' },
-  { target: 'Not Renewed', label: 'Not Renew' },
-  { target: 'Escalated', label: 'Escalate' },
-]
+// Display label for the primary CTA button, keyed by the status it targets — distinct
+// from the underlying status value, which stays "Not Renewed" everywhere else (Status
+// dropdown, Team View filters, History, activity log).
+const ACTION_LABELS: Record<string, string> = {
+  Renewed: 'Renew',
+  'Not Renewed': 'Decline',
+  Escalated: 'Escalate',
+}
 
 // Terminal decisions an override reason can apply to — progressing New -> In Review is
 // a neutral workflow step, not a judgement call, so it never requires justification.
@@ -347,9 +348,6 @@ export default function ManualReviewWorkspace({
   const statusOptions = statusState
     ? [statusState.status, ...(STATUS_TRANSITIONS[statusState.status] ?? [])]
     : []
-  const quickTransitions = statusState
-    ? QUICK_TRANSITIONS.filter((qt) => (STATUS_TRANSITIONS[statusState.status] ?? []).includes(qt.target))
-    : []
 
   if (error) {
     return <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
@@ -364,6 +362,11 @@ export default function ManualReviewWorkspace({
   // lib/mockRiskQuality.ts for exactly which parts are real vs. still simulated).
   const riskQuality = getRiskQuality(policy)
   const recommendation = computeRecommendation(riskQuality)
+
+  // Single primary CTA matching the computed recommendation — replaces the old
+  // three-equal-buttons row, which duplicated both the Status dropdown and the
+  // recommendation text above. Anything else the underwriter wants is one dropdown away.
+  const primaryActionAvailable = (STATUS_TRANSITIONS[statusState.status] ?? []).includes(recommendation.suggestedStatus)
 
   return (
     <div className="space-y-6">
@@ -484,20 +487,20 @@ export default function ManualReviewWorkspace({
         <h2 className="mb-1 text-lg font-semibold text-slate-900">Historical performance</h2>
         <p className="mb-4 text-xs text-slate-500">Context only — does not affect grade.</p>
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <div className={`rounded-xl border p-4 ${lossRatioClasses(riskQuality.historicalPerformance.lossRatio)}`}>
+          <div className={`min-w-0 rounded-xl border p-4 ${lossRatioClasses(riskQuality.historicalPerformance.lossRatio)}`}>
             <p className="text-xs font-medium opacity-75">Loss ratio</p>
-            <p className="mt-1 text-xl font-semibold">{Math.round(riskQuality.historicalPerformance.lossRatio * 100)}%</p>
+            <p className="mt-1 break-words text-xl font-semibold">{Math.round(riskQuality.historicalPerformance.lossRatio * 100)}%</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Claims paid</p>
-            <p className="mt-1 text-xl font-semibold text-slate-900">
-              {formatCurrency(riskQuality.historicalPerformance.claimsPaid, policy.currency)}
+            <p className="mt-1 break-words text-xl font-semibold text-slate-900" title={formatCurrency(riskQuality.historicalPerformance.claimsPaid, policy.currency)}>
+              {formatCompactCurrency(riskQuality.historicalPerformance.claimsPaid, policy.currency)}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Cumulative premium</p>
-            <p className="mt-1 text-xl font-semibold text-slate-900">
-              {formatCurrency(riskQuality.historicalPerformance.cumulativePremium, policy.currency)}
+            <p className="mt-1 break-words text-xl font-semibold text-slate-900" title={formatCurrency(riskQuality.historicalPerformance.cumulativePremium, policy.currency)}>
+              {formatCompactCurrency(riskQuality.historicalPerformance.cumulativePremium, policy.currency)}
             </p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -532,22 +535,17 @@ export default function ManualReviewWorkspace({
             </select>
           </label>
 
-          {quickTransitions.length > 0 && (
+          {primaryActionAvailable && (
             <div className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-              Quick actions
-              <div className="flex gap-2">
-                {quickTransitions.map((qt) => (
-                  <button
-                    key={qt.target}
-                    type="button"
-                    onClick={() => requestStatusChange(qt.target, recommendation.suggestedStatus)}
-                    disabled={saving}
-                    className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-dark active:bg-brand-dark disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-                  >
-                    {qt.label}
-                  </button>
-                ))}
-              </div>
+              Recommended action
+              <button
+                type="button"
+                onClick={() => requestStatusChange(recommendation.suggestedStatus, recommendation.suggestedStatus)}
+                disabled={saving}
+                className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-dark active:bg-brand-dark disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                {ACTION_LABELS[recommendation.suggestedStatus] ?? recommendation.suggestedStatus}
+              </button>
             </div>
           )}
 
