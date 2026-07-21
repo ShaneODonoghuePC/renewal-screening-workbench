@@ -130,10 +130,10 @@ function GradeCard({
         {history && <Sparkline values={history} />}
       </div>
       {reason && <p className="mt-2 text-xs text-slate-500">{reason}</p>}
-      {!grade && <p className="mt-2 text-xs text-slate-500">Not yet graded — Unverified.</p>}
+      {!grade && <p className="mt-2 text-xs text-slate-500">Not yet graded: Unverified.</p>}
       {watch && (
         <span className="mt-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-          Watch — worsening trend
+          Watch: worsening trend
         </span>
       )}
     </div>
@@ -403,7 +403,7 @@ export default function ManualReviewWorkspace({
 
         {!riskQuality.verified && (
           <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            Data confidence is Unverified (D&amp;B No Match or D&amp;B Status Inactive) — Company &amp; Financial
+            Data confidence is Unverified (D&amp;B No Match or D&amp;B Status Inactive), so Company &amp; Financial
             grading is not yet calculated.
           </p>
         )}

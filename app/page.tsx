@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { deriveRenewalMonth } from '@/lib/renewalMonth'
 import { buildMonthTabs } from '@/lib/monthTabs'
@@ -69,6 +69,8 @@ export default function TeamViewPage() {
   // applied once per identity, not re-forced if the user deliberately switches it to "All"/someone else.
   const [defaultFilterApplied, setDefaultFilterApplied] = useState(false)
   const [reviewPolicyId, setReviewPolicyId] = useState<string | null>(null)
+  const [flagDropdownOpen, setFlagDropdownOpen] = useState(false)
+  const flagDropdownRef = useRef<HTMLDivElement>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -116,6 +118,18 @@ export default function TeamViewPage() {
       setDefaultFilterApplied(true)
     }
   }, [currentUserId, defaultFilterApplied])
+
+  // Close the Flag type dropdown on outside click.
+  useEffect(() => {
+    if (!flagDropdownOpen) return
+    const handleClick = (event: MouseEvent) => {
+      if (flagDropdownRef.current && !flagDropdownRef.current.contains(event.target as Node)) {
+        setFlagDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [flagDropdownOpen])
 
   // Tabs/default-month are scoped to Manual Review + Navins Renew only (what the tables
   // below actually show) — Auto Renew rows are in `items` purely for the summary strip's
@@ -375,6 +389,40 @@ export default function TeamViewPage() {
             </select>
           </label>
 
+          {section === 'manual' && availableFlags.length > 0 && (
+            <div className="relative flex flex-col gap-1 text-xs font-medium text-slate-600" ref={flagDropdownRef}>
+              <span>Flag type</span>
+              <button
+                type="button"
+                onClick={() => setFlagDropdownOpen((open) => !open)}
+                className="flex items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              >
+                <span>{flagFilter.length > 0 ? `Flag type (${flagFilter.length})` : 'Flag type'}</span>
+                <span className="text-slate-400" aria-hidden="true">▾</span>
+              </button>
+              {flagDropdownOpen && (
+                <div className="absolute left-0 top-full z-20 mt-1 max-h-56 w-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+                  {availableFlags.map((flag) => (
+                    <label
+                      key={flag}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={flagFilter.includes(flag)}
+                        onChange={() =>
+                          setFlagFilter((prev) => (prev.includes(flag) ? prev.filter((f) => f !== flag) : [...prev, flag]))
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-slate-300"
+                      />
+                      {flag}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
             Sort by
             <select
@@ -398,31 +446,6 @@ export default function TeamViewPage() {
 
           {loading && <p className="text-sm text-slate-500">Loading…</p>}
         </div>
-
-        {section === 'manual' && availableFlags.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-2">
-            <span className="text-xs font-medium text-slate-600">Flag type:</span>
-            {availableFlags.map((flag) => {
-              const active = flagFilter.includes(flag)
-              return (
-                <button
-                  key={flag}
-                  type="button"
-                  onClick={() =>
-                    setFlagFilter((prev) => (active ? prev.filter((f) => f !== flag) : [...prev, flag]))
-                  }
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
-                    active
-                      ? 'bg-brand text-white active:bg-brand-dark'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300'
-                  }`}
-                >
-                  {flag}
-                </button>
-              )
-            })}
-          </div>
-        )}
 
         {section === 'manual' ? (
           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">

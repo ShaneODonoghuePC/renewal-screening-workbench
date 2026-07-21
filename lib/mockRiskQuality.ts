@@ -118,7 +118,7 @@ function historicalReason(grade: Grade, trend: [number, number, number]): string
   const deltaPts = Math.round((trend[2] - trend[0]) * 100)
   const pct = Math.round(trend[2] * 100)
   const direction = deltaPts >= 3 ? `trending up to ${pct}%` : deltaPts <= -3 ? `trending down to ${pct}%` : `steady around ${pct}%`
-  return `${grade} — loss ratio ${direction}`
+  return `${grade}: loss ratio ${direction}`
 }
 
 // FNV-1a string hash -> deterministic per-policy seed, so the still-mocked fields below
@@ -214,13 +214,13 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
     operational: {
       grade: operationalGrade,
       momentum: operationalMomentum,
-      reason: `${operationalGrade} — ${operationalReason(policy)}`,
+      reason: `${operationalGrade}: ${operationalReason(policy)}`,
     },
     companyFinancial: companyFinancialGrade
       ? {
           grade: companyFinancialGrade,
           momentum: companyFinancialMomentum,
-          reason: `${companyFinancialGrade} — ${companyFinancialReason(policy)}`,
+          reason: `${companyFinancialGrade}: ${companyFinancialReason(policy)}`,
         }
       : null,
     historical: {
@@ -253,7 +253,7 @@ export function computeRecommendation(rq: RiskQuality): Recommendation {
   if (rq.companyFinancial) dims.push({ label: 'Company & Financial', grade: rq.companyFinancial.grade, momentum: rq.companyFinancial.momentum })
   dims.push({ label: 'Historical', grade: rq.historical.grade, momentum: rq.historical.momentum })
 
-  const suffix = rq.companyFinancial ? '' : ' Company & Financial is not yet graded — Unverified.'
+  const suffix = rq.companyFinancial ? '' : ' Company & Financial is not yet graded (Unverified).'
 
   const cDims = dims.filter((d) => d.grade === 'C')
   const downgraded = dims.filter((d) => d.momentum === 'down')
@@ -263,7 +263,7 @@ export function computeRecommendation(rq: RiskQuality): Recommendation {
       cDims.length > 0
         ? `${cDims.map((d) => d.label).join(' and ')} graded C`
         : `${downgraded.map((d) => d.label).join(' and ')} downgraded this cycle`
-    return { level: 'escalate', suggestedStatus: 'Escalated', text: `Escalate for senior review — ${reason}.${suffix}` }
+    return { level: 'escalate', suggestedStatus: 'Escalated', text: `Escalate for senior review: ${reason}.${suffix}` }
   }
 
   const bDims = dims.filter((d) => d.grade === 'B')
@@ -273,12 +273,12 @@ export function computeRecommendation(rq: RiskQuality): Recommendation {
     if (bDims.length > 0) bits.push(`${bDims.map((d) => d.label).join(' and ')} graded B`)
     if (moved.length > 0) bits.push(moved.map((d) => `${d.label} trending ${d.momentum}`).join(', '))
     if (rq.trendWatch) bits.push('Historical trend worsening (watch)')
-    return { level: 'standard', suggestedStatus: 'Renewed', text: `Renew as standard — ${bits.join('; ')}.${suffix}` }
+    return { level: 'standard', suggestedStatus: 'Renewed', text: `Renew as standard: ${bits.join('; ')}.${suffix}` }
   }
 
   return {
     level: 'auto',
     suggestedStatus: 'Renewed',
-    text: `Auto-renew — all dimensions graded A with no downgrades this cycle.${suffix}`,
+    text: `Auto-renew: all dimensions graded A with no downgrades this cycle.${suffix}`,
   }
 }
