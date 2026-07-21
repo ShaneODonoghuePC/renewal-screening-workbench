@@ -1,12 +1,13 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { deriveRenewalMonth } from '@/lib/renewalMonth'
 import { buildMonthTabs } from '@/lib/monthTabs'
 import { EMPTY_VALUE } from '@/lib/format'
-import MonthTabBar from '@/components/MonthTabBar'
+import SeverityBadge from '@/components/SeverityBadge'
+import SlideOutPanel from '@/components/SlideOutPanel'
+import ManualReviewWorkspace from '@/components/ManualReviewWorkspace'
 
 type TeamItem = {
   id: string
@@ -16,15 +17,17 @@ type TeamItem = {
   flagReasons: string | null
   renewalDate: string | null
   routing: string
-  status: string
+  status: string | null
   assignedUserId: string | null
 }
 
 type Identity = { id: string; name: string; country: string }
 
 const ATTENTION_OPTIONS = ['High', 'Medium', 'None']
-const MANUAL_REVIEW_STATUSES = ['New', 'In Review', 'Renewed', 'Not Renewed', 'Escalated', 'Closed']
-const NAVINS_STATUSES = ['Pending', 'Done']
+// Closed/Done items never appear in Team View (they move to History instead, §5.7), so
+// those two statuses aren't offered as filter options here — they'd always return nothing.
+const MANUAL_REVIEW_STATUSES = ['New', 'In Review', 'Renewed', 'Not Renewed', 'Escalated']
+const NAVINS_STATUSES = ['Pending']
 
 function formatDate(renewalDate: string | null) {
   if (!renewalDate) return EMPTY_VALUE
@@ -65,6 +68,7 @@ export default function TeamViewPage() {
   // "Assigned to" defaults to the acting-as user (replaces My Queue's personal-view role) —
   // applied once per identity, not re-forced if the user deliberately switches it to "All"/someone else.
   const [defaultFilterApplied, setDefaultFilterApplied] = useState(false)
+  const [reviewPolicyId, setReviewPolicyId] = useState<string | null>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -113,7 +117,11 @@ export default function TeamViewPage() {
     }
   }, [currentUserId, defaultFilterApplied])
 
-  const { tabs, defaultMonth } = useMemo(() => buildMonthTabs(items), [items])
+  // Tabs/default-month are scoped to Manual Review + Navins Renew only (what the tables
+  // below actually show) — Auto Renew rows are in `items` purely for the summary strip's
+  // auto-renew count and shouldn't shift month labels/counts or the default-month pick.
+  const teamOnlyItems = useMemo(() => items.filter((item) => item.routing !== 'RPUX Auto Renew'), [items])
+  const { tabs, defaultMonth } = useMemo(() => buildMonthTabs(teamOnlyItems), [teamOnlyItems])
 
   const monthParam = searchParams.get('month')
   const selectedMonth = monthParam && tabs.some((tab) => tab.value === monthParam) ? monthParam : defaultMonth
@@ -139,14 +147,37 @@ export default function TeamViewPage() {
     })
   }, [items, selectedMonth])
 
+  // Closed (Manual Review) / Done (Navins Renew) items are filtered out here — a display
+  // change only, per §5.3: the underlying data/status is untouched, they just move to
+  // History (§5.7) instead of staying visible in the working queues.
   const manualReviewItems = useMemo(
-    () => monthFilteredItems.filter((item) => item.routing === 'Manual Review'),
+    () => monthFilteredItems.filter((item) => item.routing === 'Manual Review' && item.status !== 'Closed'),
     [monthFilteredItems]
   )
   const navinsItems = useMemo(
-    () => monthFilteredItems.filter((item) => item.routing === 'NAVINS Renew'),
+    () => monthFilteredItems.filter((item) => item.routing === 'NAVINS Renew' && item.status !== 'Done'),
     [monthFilteredItems]
   )
+  const autoRenewItems = useMemo(
+    () => monthFilteredItems.filter((item) => item.routing === 'RPUX Auto Renew'),
+    [monthFilteredItems]
+  )
+
+  // Summary strip counts — scoped to the selected month only, independent of the
+  // Attention/Status/Assigned-to filters below (an at-a-glance overview of the whole
+  // month's caseload, not whichever narrow slice happens to be currently filtered).
+  // Counts reflect the same open-items filtering as the tables (Closed/Done excluded)
+  // so the tiles and tables never disagree with each other.
+  const summary = useMemo(() => {
+    const totalFlagsRaised = manualReviewItems.reduce((sum, item) => sum + flagList(item.flagReasons).length, 0)
+    return {
+      totalRenewals: manualReviewItems.length + navinsItems.length + autoRenewItems.length,
+      autoRenewCount: autoRenewItems.length,
+      navinsCount: navinsItems.length,
+      manualReviewCount: manualReviewItems.length,
+      totalFlagsRaised,
+    }
+  }, [autoRenewItems, navinsItems, manualReviewItems])
 
   const availableFlags = useMemo(() => {
     const set = new Set<string>()
@@ -163,7 +194,7 @@ export default function TeamViewPage() {
         } else if (sortField === 'attention') {
           cmp = attentionRank(a.attention) - attentionRank(b.attention)
         } else {
-          cmp = a.status.localeCompare(b.status)
+          cmp = (a.status ?? '').localeCompare(b.status ?? '')
         }
         return sortDir === 'asc' ? cmp : -cmp
       })
@@ -221,23 +252,80 @@ export default function TeamViewPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Team View</h1>
-        <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          Everything in your country's Manual Review and Navins Renew queues for the selected month. Defaults to your
-          own assigned items. Switch "Assigned to" below to see the whole team's.
-        </p>
+      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Team View</h1>
+          <p className="text-xs text-slate-500">
+            Defaults to your own assigned items. Switch "Assigned to" below to see the whole team's.
+          </p>
+        </div>
       </section>
 
       {error && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
       )}
 
-      {/* Hierarchy: month-tab bar -> filters -> Manual Review/Navins Renew tabs -> table */}
-      {tabs.length > 0 && <MonthTabBar tabs={tabs} selected={selectedMonth} onSelect={handleSelectMonth} />}
+      {/* Summary strip: month-scoped overview, independent of the filters below */}
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Total renewals</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.totalRenewals}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Auto-renew</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.autoRenewCount}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Navins Renew</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.navinsCount}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Manual Review</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.manualReviewCount}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-slate-500">Total flags raised</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.totalFlagsRaised}</p>
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+        {/* Hierarchy: Manual Review/Navins Renew tabs -> filters (incl. month) -> table */}
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setSection('manual')}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              section === 'manual' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
+            }`}
+          >
+            Manual Review ({manualReviewItems.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSection('navins')}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              section === 'navins' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
+            }`}
+          >
+            Navins Renew ({navinsItems.length})
+          </button>
+        </div>
+
         <div className="mb-4 flex flex-wrap items-end gap-4">
+          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+            Month
+            <select
+              value={selectedMonth}
+              onChange={(event) => handleSelectMonth(event.target.value)}
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900"
+            >
+              {tabs.map((tab) => (
+                <option key={tab.value} value={tab.value}>{tab.label}</option>
+              ))}
+            </select>
+          </label>
+
           {section === 'manual' && (
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
               Attention
@@ -330,27 +418,6 @@ export default function TeamViewPage() {
           </div>
         )}
 
-        <div className="mb-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setSection('manual')}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              section === 'manual' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
-            }`}
-          >
-            Manual Review ({manualReviewItems.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSection('navins')}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              section === 'navins' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
-            }`}
-          >
-            Navins Renew ({navinsItems.length})
-          </button>
-        </div>
-
         {section === 'manual' ? (
           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -368,16 +435,9 @@ export default function TeamViewPage() {
               <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredManualReview.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-4 font-medium">
-                      <Link
-                        href={`/review/manual/${encodeURIComponent(item.id)}`}
-                        className="text-[#122933] underline-offset-2 hover:underline"
-                      >
-                        {item.id}
-                      </Link>
-                    </td>
+                    <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
                     <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
-                    <td className="px-4 py-4 text-slate-700">{item.attention || EMPTY_VALUE}</td>
+                    <td className="px-4 py-4"><SeverityBadge attention={item.attention} /></td>
                     <td className="px-4 py-4 text-slate-700">{item.status}</td>
                     <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
                     <td className="px-4 py-4 text-slate-700">
@@ -385,10 +445,17 @@ export default function TeamViewPage() {
                     </td>
                     <td className="px-4 py-4 text-slate-700">
                       <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setReviewPolicyId(item.id)}
+                          className="rounded-lg border border-[#122933] px-2 py-1 text-xs font-semibold text-[#122933] hover:bg-[#122933]/5"
+                        >
+                          Review
+                        </button>
                         {!item.assignedUserId && currentUserId && (
                           <button
                             type="button"
-                            onClick={() => updatePolicy(item.id, item.status, currentUserId)}
+                            onClick={() => updatePolicy(item.id, item.status ?? 'New', currentUserId)}
                             className="rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-700"
                           >
                             Assign to me
@@ -396,7 +463,7 @@ export default function TeamViewPage() {
                         )}
                         <select
                           value={item.assignedUserId ?? ''}
-                          onChange={(event) => updatePolicy(item.id, item.status, event.target.value || null)}
+                          onChange={(event) => updatePolicy(item.id, item.status ?? 'New', event.target.value || null)}
                           className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
                         >
                           <option value="">Unassigned</option>
@@ -446,7 +513,7 @@ export default function TeamViewPage() {
                         {!item.assignedUserId && currentUserId && (
                           <button
                             type="button"
-                            onClick={() => updatePolicy(item.id, item.status, currentUserId)}
+                            onClick={() => updatePolicy(item.id, item.status ?? 'Pending', currentUserId)}
                             className="rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-700"
                           >
                             Assign to me
@@ -454,7 +521,7 @@ export default function TeamViewPage() {
                         )}
                         <select
                           value={item.assignedUserId ?? ''}
-                          onChange={(event) => updatePolicy(item.id, item.status, event.target.value || null)}
+                          onChange={(event) => updatePolicy(item.id, item.status ?? 'Pending', event.target.value || null)}
                           className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
                         >
                           <option value="">Unassigned</option>
@@ -487,6 +554,10 @@ export default function TeamViewPage() {
           </div>
         )}
       </section>
+
+      <SlideOutPanel open={reviewPolicyId !== null} onClose={() => setReviewPolicyId(null)}>
+        {reviewPolicyId && <ManualReviewWorkspace policyId={reviewPolicyId} onUpdate={loadAll} />}
+      </SlideOutPanel>
     </div>
   )
 }

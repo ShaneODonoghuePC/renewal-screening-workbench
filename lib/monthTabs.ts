@@ -2,7 +2,7 @@ import { deriveRenewalMonth } from './renewalMonth'
 
 export type MonthTab = { value: string; label: string; count: number }
 
-type MonthTabItem = { renewalDate: string | null | undefined; status: string }
+type MonthTabItem = { renewalDate: string | null | undefined; status: string | null }
 
 const MONTH_NAMES = [
   '',
@@ -25,7 +25,7 @@ export function buildMonthTabs(items: MonthTabItem[]): { tabs: MonthTab[]; defau
     if (!derived) continue
     const key = `${derived.year}-${String(derived.month).padStart(2, '0')}`
     counts.set(key, (counts.get(key) ?? 0) + 1)
-    if (!TERMINAL_STATUSES.has(item.status)) {
+    if (!TERMINAL_STATUSES.has(item.status ?? '')) {
       hasOutstanding.add(key)
     }
   }
