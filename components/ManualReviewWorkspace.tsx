@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { STATUS_TRANSITIONS } from '@/lib/statusWorkflow'
 import { formatCurrency, formatCompactCurrency, EMPTY_VALUE } from '@/lib/format'
-import { getRiskQuality, computeRecommendation, type Grade, type Momentum } from '@/lib/mockRiskQuality'
+import { getRiskQuality, computeRecommendation, computeHistoricalGrade, type Grade, type Momentum } from '@/lib/mockRiskQuality'
 import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel'
 import SeverityBadge from '@/components/SeverityBadge'
 
@@ -40,10 +40,11 @@ const ACTION_LABELS: Record<string, string> = {
 // a neutral workflow step, not a judgement call, so it never requires justification.
 const TERMINAL_DECISIONS = ['Renewed', 'Not Renewed', 'Escalated']
 
+// Full RAG treatment for the graded dimensions: A = green, B = orange, C = red.
 function gradeBadgeClasses(grade: Grade) {
-  if (grade === 'C') return 'bg-brand text-white'
-  if (grade === 'B') return 'bg-sage text-brand'
-  return 'bg-slate-100 text-slate-700'
+  if (grade === 'C') return 'bg-red-600 text-white'
+  if (grade === 'B') return 'bg-orange-600 text-white'
+  return 'bg-green-600 text-white'
 }
 
 function momentumSymbol(momentum: Momentum) {
@@ -52,9 +53,10 @@ function momentumSymbol(momentum: Momentum) {
   return '→'
 }
 
-function lossRatioClasses(ratio: number) {
-  if (ratio >= 0.5) return 'border-red-200 bg-red-50 text-red-700'
-  if (ratio >= 0.25) return 'border-amber-200 bg-amber-50 text-amber-700'
+// Same RAG bands as the grade badges, softer card treatment (border/bg-50/text-700).
+function ragCardClasses(grade: Grade) {
+  if (grade === 'C') return 'border-red-200 bg-red-50 text-red-700'
+  if (grade === 'B') return 'border-orange-200 bg-orange-50 text-orange-700'
   return 'border-green-200 bg-green-50 text-green-700'
 }
 
@@ -389,15 +391,6 @@ export default function ManualReviewWorkspace({
           </div>
           <div className="flex items-center gap-2">
             <SeverityBadge attention={policy.attention} />
-            <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                riskQuality.verified
-                  ? 'border-slate-300 bg-white text-slate-600'
-                  : 'border-amber-300 bg-amber-50 text-amber-800'
-              }`}
-            >
-              {riskQuality.verified ? 'Verified' : 'Unverified'}
-            </span>
           </div>
         </div>
       </section>
@@ -493,36 +486,39 @@ export default function ManualReviewWorkspace({
         </div>
       </section>
 
-      {/* Historical performance — mocked, context only, does not affect grade */}
+      {/* Historical Performance — mocked, does not affect grade */}
       <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="mb-1 text-lg font-semibold text-slate-900">Historical performance</h2>
-        <p className="mb-4 text-xs text-slate-500">Context only — does not affect grade.</p>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Historical Performance</h2>
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <div className={`min-w-0 rounded-xl border p-4 ${lossRatioClasses(riskQuality.historicalPerformance.lossRatio)}`}>
+          <div
+            className={`flex h-full min-w-0 flex-col justify-between rounded-xl border p-4 ${ragCardClasses(
+              computeHistoricalGrade(riskQuality.historicalPerformance.lossRatio)
+            )}`}
+          >
             <p className="text-xs font-medium opacity-75">Loss ratio</p>
-            <p className="mt-1 break-words text-xl font-semibold">{Math.round(riskQuality.historicalPerformance.lossRatio * 100)}%</p>
+            <p className="whitespace-nowrap text-xl font-semibold">{Math.round(riskQuality.historicalPerformance.lossRatio * 100)}%</p>
           </div>
-          <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex h-full min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Claims paid</p>
-            <p className="mt-1 break-words text-xl font-semibold text-slate-900" title={formatCurrency(riskQuality.historicalPerformance.claimsPaid, policy.currency)}>
+            <p className="whitespace-nowrap text-lg font-semibold text-slate-900" title={formatCurrency(riskQuality.historicalPerformance.claimsPaid, policy.currency)}>
               {formatCompactCurrency(riskQuality.historicalPerformance.claimsPaid, policy.currency)}
             </p>
           </div>
-          <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex h-full min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Cumulative premium</p>
-            <p className="mt-1 break-words text-xl font-semibold text-slate-900" title={formatCurrency(riskQuality.historicalPerformance.cumulativePremium, policy.currency)}>
+            <p className="whitespace-nowrap text-lg font-semibold text-slate-900" title={formatCurrency(riskQuality.historicalPerformance.cumulativePremium, policy.currency)}>
               {formatCompactCurrency(riskQuality.historicalPerformance.cumulativePremium, policy.currency)}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex h-full min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Claim frequency</p>
-            <p className="mt-1 text-xl font-semibold text-slate-900">
+            <p className="whitespace-nowrap text-xl font-semibold text-slate-900">
               {riskQuality.historicalPerformance.claimFrequency.toFixed(1)}/yr
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex h-full min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Tenure</p>
-            <p className="mt-1 text-xl font-semibold text-slate-900">{riskQuality.historicalPerformance.tenureYears} yrs</p>
+            <p className="whitespace-nowrap text-xl font-semibold text-slate-900">{riskQuality.historicalPerformance.tenureYears} yrs</p>
           </div>
         </div>
       </section>

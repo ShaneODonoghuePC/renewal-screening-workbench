@@ -92,7 +92,7 @@ function companyFinancialReason(policy: RiskQualityInput): string {
 // Thresholds are an assumption (mid-50s to low-60s loss ratio is a normal/healthy range
 // for commercial P&C), matched to the shipped distribution (mean ~55%, SD ~17pt) so the
 // split lands roughly where A/B/C should for this dataset -- easy to retune later.
-function computeHistoricalGrade(lossRatio: number): Grade {
+export function computeHistoricalGrade(lossRatio: number): Grade {
   // Threshold on the rounded percentage rather than the raw fraction, so the grade band
   // can never disagree with the displayed Loss ratio % right at a boundary (e.g. a raw
   // 54.96% displaying as "55%" while still grading as if it were under the B cutoff).

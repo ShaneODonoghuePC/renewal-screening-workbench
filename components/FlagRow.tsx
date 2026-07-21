@@ -16,7 +16,7 @@ export default function FlagRow({
   return (
     <div className="flex items-center justify-between border-b border-slate-100 py-2 text-sm last:border-0">
       <span className="text-slate-700">{label}</span>
-      <span className={fired ? 'font-semibold text-brand' : 'font-medium text-slate-500'}>
+      <span className={fired ? 'font-semibold text-red-600' : 'font-medium text-slate-500'}>
         {yn(fired)}
         {figure != null && figure !== '' ? ` (${figure})` : ''}
       </span>
