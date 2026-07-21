@@ -40,10 +40,11 @@ const ACTION_LABELS: Record<string, string> = {
 // a neutral workflow step, not a judgement call, so it never requires justification.
 const TERMINAL_DECISIONS = ['Renewed', 'Not Renewed', 'Escalated']
 
-// Full RAG treatment for the graded dimensions: A = green, B = orange, C = red.
+// Full RAG treatment for the graded dimensions: A = green, B = amber, C = red. Amber
+// rather than orange for the middle tier -- more visually distinct from red at a glance.
 function gradeBadgeClasses(grade: Grade) {
   if (grade === 'C') return 'bg-red-600 text-white'
-  if (grade === 'B') return 'bg-orange-600 text-white'
+  if (grade === 'B') return 'bg-amber-600 text-white'
   return 'bg-green-600 text-white'
 }
 
@@ -56,7 +57,7 @@ function momentumSymbol(momentum: Momentum) {
 // Same RAG bands as the grade badges, softer card treatment (border/bg-50/text-700).
 function ragCardClasses(grade: Grade) {
   if (grade === 'C') return 'border-red-200 bg-red-50 text-red-700'
-  if (grade === 'B') return 'border-orange-200 bg-orange-50 text-orange-700'
+  if (grade === 'B') return 'border-amber-200 bg-amber-50 text-amber-700'
   return 'border-green-200 bg-green-50 text-green-700'
 }
 
