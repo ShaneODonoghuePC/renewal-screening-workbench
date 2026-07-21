@@ -18,16 +18,17 @@ const TERMINAL_STATUSES = new Set(['Closed', 'Done'])
 // derived from whichever Renewal Month values are present, not the raw renewalDate month.
 export function buildMonthTabs(items: MonthTabItem[]): { tabs: MonthTab[]; defaultMonth: string } {
   const counts = new Map<string, number>()
-  const hasOutstanding = new Set<string>()
 
+  // Closed (Manual Review) / Done (Navins Renew) items never appear in Team View's
+  // tables (§5.3), so they're excluded here too -- the same way app/page.tsx's
+  // manualReviewItems/navinsItems already exclude them. Auto-Renew Log passes a
+  // placeholder status that never matches TERMINAL_STATUSES, so this is a no-op there.
   for (const item of items) {
     const derived = deriveRenewalMonth(item.renewalDate)
     if (!derived) continue
+    if (TERMINAL_STATUSES.has(item.status ?? '')) continue
     const key = `${derived.year}-${String(derived.month).padStart(2, '0')}`
     counts.set(key, (counts.get(key) ?? 0) + 1)
-    if (!TERMINAL_STATUSES.has(item.status ?? '')) {
-      hasOutstanding.add(key)
-    }
   }
 
   const sortedKeys = [...counts.keys()].sort()
@@ -40,7 +41,10 @@ export function buildMonthTabs(items: MonthTabItem[]): { tabs: MonthTab[]; defau
   const totalCount = [...counts.values()].reduce((sum, c) => sum + c, 0)
   tabs.push({ value: 'all', label: `All (${totalCount})`, count: totalCount })
 
-  const defaultMonth = sortedKeys.find((key) => hasOutstanding.has(key)) ?? 'all'
+  // Every remaining key already has at least one non-terminal item by construction,
+  // so the earliest one is the sensible default (same outcome as the old
+  // hasOutstanding scan, just simplified now that terminal-only months are excluded).
+  const defaultMonth = sortedKeys[0] ?? 'all'
 
   return { tabs, defaultMonth }
 }
