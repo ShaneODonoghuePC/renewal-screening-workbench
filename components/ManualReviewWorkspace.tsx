@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { STATUS_TRANSITIONS } from '@/lib/statusWorkflow'
 import { formatCurrency, EMPTY_VALUE } from '@/lib/format'
+import { getRiskQuality, computeRecommendation, type Grade, type Momentum } from '@/lib/mockRiskQuality'
 import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel'
+import SeverityBadge from '@/components/SeverityBadge'
 
 type PolicyDetail = FlagEvidence & {
   id: string
@@ -32,6 +34,96 @@ const QUICK_TRANSITIONS: Array<{ target: string; label: string }> = [
   { target: 'Not Renewed', label: 'Not Renew' },
   { target: 'Escalated', label: 'Escalate' },
 ]
+
+// Terminal decisions an override reason can apply to — progressing New -> In Review is
+// a neutral workflow step, not a judgement call, so it never requires justification.
+const TERMINAL_DECISIONS = ['Renewed', 'Not Renewed', 'Escalated']
+
+function gradeBadgeClasses(grade: Grade) {
+  if (grade === 'C') return 'bg-brand text-white'
+  if (grade === 'B') return 'bg-sage text-brand'
+  return 'bg-slate-100 text-slate-700'
+}
+
+function momentumSymbol(momentum: Momentum) {
+  if (momentum === 'up') return '↑'
+  if (momentum === 'down') return '↓'
+  return '→'
+}
+
+function lossRatioClasses(ratio: number) {
+  if (ratio >= 0.5) return 'border-red-200 bg-red-50 text-red-700'
+  if (ratio >= 0.25) return 'border-amber-200 bg-amber-50 text-amber-700'
+  return 'border-green-200 bg-green-50 text-green-700'
+}
+
+// Tiny inline trajectory display for the 3-cycle D&B score history — no charting
+// dependency needed for three points.
+function Sparkline({ values }: { values: [number, number, number] }) {
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+  const points = values.map((v, i) => `${i * 18},${18 - ((v - min) / range) * 18}`).join(' ')
+  return (
+    <svg width="40" height="20" viewBox="-2 -2 40 22" className="text-slate-400" aria-hidden="true">
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  )
+}
+
+function GradeCard({
+  label,
+  grade,
+  momentum,
+  momentumMocked,
+  watch,
+  history,
+}: {
+  label: string
+  grade: Grade | null
+  momentum: Momentum
+  momentumMocked?: boolean
+  watch?: boolean
+  history?: [number, number, number]
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        {grade && (
+          <span
+            className={`text-sm ${momentum === 'down' ? 'text-brand' : 'text-slate-400'}`}
+            aria-label={`Momentum: ${momentum}${momentumMocked ? ' (mocked)' : ''}`}
+            title={`Momentum: ${momentum}${momentumMocked ? ' (mocked)' : ''}`}
+          >
+            {momentumSymbol(momentum)}
+            {momentumMocked && <sup>*</sup>}
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex items-center gap-3">
+        {grade ? (
+          <span
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold ${gradeBadgeClasses(grade)}`}
+          >
+            {grade}
+          </span>
+        ) : (
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-slate-300 text-xs font-medium text-slate-400">
+            N/A
+          </span>
+        )}
+        {history && <Sparkline values={history} />}
+      </div>
+      {!grade && <p className="mt-2 text-xs text-slate-500">Not yet graded — Unverified.</p>}
+      {watch && (
+        <span className="mt-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+          Watch — worsening trend
+        </span>
+      )}
+    </div>
+  )
+}
 
 function formatDate(renewalDate: string | null) {
   if (!renewalDate) return EMPTY_VALUE
@@ -90,6 +182,7 @@ export default function ManualReviewWorkspace({
   const [loading, setLoading] = useState(false)
   const [commentDraft, setCommentDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [pendingOverride, setPendingOverride] = useState<string | null>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -171,6 +264,47 @@ export default function ManualReviewWorkspace({
     }
   }
 
+  // Any terminal decision that disagrees with the computed recommendation requires a
+  // reason before it saves — reuses the existing status dropdown/quick actions and the
+  // existing comment field, no new statuses introduced.
+  const requestStatusChange = (newStatus: string, suggestedStatus: string) => {
+    if (!statusState || newStatus === statusState.status) return
+    if (TERMINAL_DECISIONS.includes(newStatus) && newStatus !== suggestedStatus) {
+      setPendingOverride(newStatus)
+      return
+    }
+    setPendingOverride(null)
+    changeStatus(newStatus)
+  }
+
+  const confirmOverride = async () => {
+    if (!pendingOverride || !commentDraft.trim()) return
+    setSaving(true)
+    try {
+      await fetch(`/api/policies/${encodeURIComponent(policyId)}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ text: commentDraft.trim() }),
+      })
+      setCommentDraft('')
+      if (statusState) {
+        await fetch(`/api/policies/${encodeURIComponent(policyId)}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ status: pendingOverride, assignedUserId: statusState.assignedUserId }),
+        })
+      }
+      setPendingOverride(null)
+      await refreshWorkspace()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cancelOverride = () => setPendingOverride(null)
+
   const changeAssignment = async (newUserId: string | null) => {
     if (!statusState) return
     setSaving(true)
@@ -225,11 +359,91 @@ export default function ManualReviewWorkspace({
     return <div className="p-6 text-sm text-slate-500">{loading ? 'Loading…' : 'No data.'}</div>
   }
 
+  // Data Confidence and the Operational / Company & Financial grades are derived from
+  // policy's real flag data; Historical and the figures below stay mocked (see
+  // lib/mockRiskQuality.ts for exactly which parts are real vs. still simulated).
+  const riskQuality = getRiskQuality(policy)
+  const recommendation = computeRecommendation(riskQuality)
+
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{policy.id}</h1>
-        <p className="mt-1 text-sm text-slate-600">{policy.customerName}</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{policy.id}</h1>
+            <p className="mt-1 text-sm text-slate-600">{policy.customerName}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <SeverityBadge attention={policy.attention} />
+            <span
+              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                riskQuality.verified
+                  ? 'border-slate-300 bg-white text-slate-600'
+                  : 'border-amber-300 bg-amber-50 text-amber-800'
+              }`}
+            >
+              {riskQuality.verified ? 'Verified' : 'Unverified'}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Risk Quality — Data Confidence and Operational/Company & Financial grades are
+          derived from real flag data; Historical and the figures below are still mocked. */}
+      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Risk Quality</h2>
+
+        {!riskQuality.verified && (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Data confidence is Unverified (D&amp;B No Match or D&amp;B Status Inactive) — Company &amp; Financial
+            grading is not yet calculated.
+          </p>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <GradeCard
+            label="Operational"
+            grade={riskQuality.operational.grade}
+            momentum={riskQuality.operational.momentum}
+            momentumMocked
+          />
+          <GradeCard
+            label="Company & Financial"
+            grade={riskQuality.companyFinancial?.grade ?? null}
+            momentum={riskQuality.companyFinancial?.momentum ?? 'stable'}
+            momentumMocked={!!riskQuality.companyFinancial}
+          />
+          <GradeCard
+            label="Historical"
+            grade={riskQuality.historical.grade}
+            momentum={riskQuality.historical.momentum}
+            watch={riskQuality.trendWatch}
+            history={riskQuality.dnbScoreHistory}
+          />
+        </div>
+        <p className="mt-2 text-xs text-slate-400">
+          * Momentum for Operational and Company &amp; Financial is mocked — there's no prior-cycle flag snapshot
+          yet to compute a real trend.
+        </p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-medium text-slate-500">Renewal economics</p>
+            <p className="mt-1 text-sm font-medium text-slate-900">
+              {formatCurrency(riskQuality.renewalEconomics.expiringPremium, policy.currency)}
+              {' → '}
+              {formatCurrency(riskQuality.renewalEconomics.renewalPremium, policy.currency)}{' '}
+              <span className={riskQuality.renewalEconomics.movementPercent >= 0 ? 'text-brand' : 'text-slate-600'}>
+                ({riskQuality.renewalEconomics.movementPercent >= 0 ? '+' : ''}
+                {riskQuality.renewalEconomics.movementPercent}%)
+              </span>
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-medium text-slate-500">Computed recommendation</p>
+            <p className="mt-1 text-sm font-medium text-slate-900">{recommendation.text}</p>
+          </div>
+        </div>
       </section>
 
       {/* Identity & Context */}
@@ -265,6 +479,40 @@ export default function ManualReviewWorkspace({
         </div>
       </section>
 
+      {/* Historical performance — mocked, context only, does not affect grade */}
+      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <h2 className="mb-1 text-lg font-semibold text-slate-900">Historical performance</h2>
+        <p className="mb-4 text-xs text-slate-500">Context only — does not affect grade.</p>
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <div className={`rounded-xl border p-4 ${lossRatioClasses(riskQuality.historicalPerformance.lossRatio)}`}>
+            <p className="text-xs font-medium opacity-75">Loss ratio</p>
+            <p className="mt-1 text-xl font-semibold">{Math.round(riskQuality.historicalPerformance.lossRatio * 100)}%</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-medium text-slate-500">Claims paid</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">
+              {formatCurrency(riskQuality.historicalPerformance.claimsPaid, policy.currency)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-medium text-slate-500">Cumulative premium</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">
+              {formatCurrency(riskQuality.historicalPerformance.cumulativePremium, policy.currency)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-medium text-slate-500">Claim frequency</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">
+              {riskQuality.historicalPerformance.claimFrequency.toFixed(1)}/yr
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-medium text-slate-500">Tenure</p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">{riskQuality.historicalPerformance.tenureYears} yrs</p>
+          </div>
+        </div>
+      </section>
+
       {/* Underwriter Workspace */}
       <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Underwriter Workspace</h2>
@@ -274,7 +522,7 @@ export default function ManualReviewWorkspace({
             Status
             <select
               value={statusState.status}
-              onChange={(event) => changeStatus(event.target.value)}
+              onChange={(event) => requestStatusChange(event.target.value, recommendation.suggestedStatus)}
               disabled={saving}
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
             >
@@ -292,7 +540,7 @@ export default function ManualReviewWorkspace({
                   <button
                     key={qt.target}
                     type="button"
-                    onClick={() => changeStatus(qt.target)}
+                    onClick={() => requestStatusChange(qt.target, recommendation.suggestedStatus)}
                     disabled={saving}
                     className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-dark active:bg-brand-dark disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                   >
@@ -329,6 +577,33 @@ export default function ManualReviewWorkspace({
             </button>
           )}
         </div>
+
+        {pendingOverride && (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p>
+              Changing status to <strong>{pendingOverride}</strong> differs from the computed recommendation
+              ("{recommendation.text}"). Add a reason in the comment box below, then confirm.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={confirmOverride}
+                disabled={saving || !commentDraft.trim()}
+                className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                Confirm change with reason
+              </button>
+              <button
+                type="button"
+                onClick={cancelOverride}
+                disabled={saving}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:bg-slate-100 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 grid gap-6 md:grid-cols-2">
           <div>
