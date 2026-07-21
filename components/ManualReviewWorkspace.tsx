@@ -74,31 +74,41 @@ function Sparkline({ values }: { values: [number, number, number] }) {
 
 function GradeCard({
   label,
+  scaleInfo,
   grade,
   momentum,
-  momentumMocked,
+  reason,
   watch,
   history,
 }: {
   label: string
+  scaleInfo: string
   grade: Grade | null
   momentum: Momentum
-  momentumMocked?: boolean
+  reason?: string
   watch?: boolean
   history?: [number, number, number]
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
+          {label}
+          <span
+            className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-slate-300 text-[9px] font-semibold leading-none text-slate-400"
+            title={scaleInfo}
+            aria-label={`What ${label} grades mean: ${scaleInfo}`}
+          >
+            i
+          </span>
+        </p>
         {grade && (
           <span
             className={`text-sm ${momentum === 'down' ? 'text-brand' : 'text-slate-400'}`}
-            aria-label={`Momentum: ${momentum}${momentumMocked ? ' (mocked)' : ''}`}
-            title={`Momentum: ${momentum}${momentumMocked ? ' (mocked)' : ''}`}
+            aria-label={`Momentum: ${momentum}`}
+            title={`Momentum: ${momentum}`}
           >
             {momentumSymbol(momentum)}
-            {momentumMocked && <sup>*</sup>}
           </span>
         )}
       </div>
@@ -116,6 +126,7 @@ function GradeCard({
         )}
         {history && <Sparkline values={history} />}
       </div>
+      {reason && <p className="mt-2 text-xs text-slate-500">{reason}</p>}
       {!grade && <p className="mt-2 text-xs text-slate-500">Not yet graded — Unverified.</p>}
       {watch && (
         <span className="mt-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
@@ -406,28 +417,28 @@ export default function ManualReviewWorkspace({
         <div className="grid gap-3 sm:grid-cols-3">
           <GradeCard
             label="Operational"
+            scaleInfo="A = no Stage 1 flags fired. B = exactly one non-critical flag. C = Open Claim, Premium Unpaid, or 2+ flags fired."
             grade={riskQuality.operational.grade}
             momentum={riskQuality.operational.momentum}
-            momentumMocked
+            reason={riskQuality.operational.reason}
           />
           <GradeCard
             label="Company & Financial"
+            scaleInfo="A = no Stage 2 flags fired. B = exactly one flag. C = two or more of D&B Rating Below A, Latest Profit Negative, or Assets Moved >25% YoY."
             grade={riskQuality.companyFinancial?.grade ?? null}
             momentum={riskQuality.companyFinancial?.momentum ?? 'stable'}
-            momentumMocked={!!riskQuality.companyFinancial}
+            reason={riskQuality.companyFinancial?.reason}
           />
           <GradeCard
             label="Historical"
+            scaleInfo="Reflects historical claims performance. A persistent loss-ratio increase raises a Watch flag even before the letter grade changes."
             grade={riskQuality.historical.grade}
             momentum={riskQuality.historical.momentum}
+            reason={riskQuality.historical.reason}
             watch={riskQuality.trendWatch}
-            history={riskQuality.dnbScoreHistory}
+            history={riskQuality.lossRatioTrend}
           />
         </div>
-        <p className="mt-2 text-xs text-slate-400">
-          * Momentum for Operational and Company &amp; Financial is mocked — there's no prior-cycle flag snapshot
-          yet to compute a real trend.
-        </p>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">

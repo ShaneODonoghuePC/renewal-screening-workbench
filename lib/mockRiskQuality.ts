@@ -1,7 +1,7 @@
 export type Grade = 'A' | 'B' | 'C'
 export type Momentum = 'stable' | 'up' | 'down'
 
-export type DimensionGrade = { grade: Grade; momentum: Momentum }
+export type DimensionGrade = { grade: Grade; momentum: Momentum; reason: string }
 
 export type RiskQualityInput = {
   id: string
@@ -22,9 +22,11 @@ export type RiskQuality = {
   // null when Unverified — Company & Financial is only calculated once Data Confidence
   // is Verified, same gating as the real methodology this prototypes.
   companyFinancial: DimensionGrade | null
-  // Still mocked: no real prior-cycle D&B trajectory data exists yet.
+  // Still mocked: no real prior-cycle claims trajectory data exists yet.
   historical: DimensionGrade
-  dnbScoreHistory: [number, number, number]
+  // 3-cycle mocked loss-ratio trend (oldest -> newest), ending at the current cycle's
+  // lossRatio below — drives the Historical card's sparkline and Watch tag.
+  lossRatioTrend: [number, number, number]
   trendWatch: boolean
   historicalPerformance: {
     lossRatio: number
@@ -65,6 +67,34 @@ export function computeCompanyFinancialGrade(policy: RiskQualityInput): Grade {
   return 'A'
 }
 
+// One-line "why" for the Operational grade, naming the real fired flags (same labels
+// used in FlagDetailPanel/FlagRow, so this never contradicts the flags shown elsewhere).
+function operationalReason(policy: RiskQualityInput): string {
+  const fired: string[] = []
+  if (policy.openClaim) fired.push('Open Claim')
+  if (policy.premiumUnpaid) fired.push('Premium Unpaid')
+  if (policy.renewalTypeManual) fired.push('Renewal Type Manual')
+  if (policy.systemListedCompany) fired.push('System Listed Company')
+  return fired.length > 0 ? fired.join(', ') : 'no flags raised'
+}
+
+// One-line "why" for the Company & Financial grade, naming the real fired flags.
+function companyFinancialReason(policy: RiskQualityInput): string {
+  const fired: string[] = []
+  if (policy.dnbRatingBelowA) fired.push('D&B Rating Below A')
+  if (policy.latestProfitNegative) fired.push('Latest Profit Negative')
+  if (policy.assetsMovedSignificant) fired.push('Assets Moved >25% YoY')
+  return fired.length > 0 ? fired.join(', ') : 'no flags raised'
+}
+
+// One-line "why" for the Historical grade, tied to the mocked loss-ratio trend.
+function historicalReason(grade: Grade, trend: [number, number, number]): string {
+  const deltaPts = Math.round((trend[2] - trend[0]) * 100)
+  const pct = Math.round(trend[2] * 100)
+  const direction = deltaPts >= 3 ? `trending up to ${pct}%` : deltaPts <= -3 ? `trending down to ${pct}%` : `steady around ${pct}%`
+  return `${grade} — loss ratio ${direction}`
+}
+
 // FNV-1a string hash -> deterministic per-policy seed, so the still-mocked fields below
 // stay stable across reloads/renders for a given policy instead of reshuffling every render.
 function hashSeed(input: string): number {
@@ -86,6 +116,18 @@ function mulberry32(seed: number) {
   }
 }
 
+// Box-Muller transform over two uniform draws -> one approximately-normal value.
+function randNormal(rand: () => number, mean: number, sd: number): number {
+  const u1 = Math.max(rand(), 1e-9)
+  const u2 = rand()
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+  return mean + z * sd
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
 const GRADES: Grade[] = ['A', 'A', 'B', 'B', 'C']
 const MOMENTA: Momentum[] = ['stable', 'stable', 'stable', 'up', 'down']
 
@@ -97,10 +139,8 @@ function pick<T>(rand: () => number, arr: T[]): T {
 // Operational / Company & Financial grades are computed from the policy's real flag
 // data (see computeDataConfidence / computeOperationalGrade / computeCompanyFinancialGrade
 // above). Everything else here has no real data source yet, so it's mocked, deterministic
-// per policy id: momentum for Operational and Company & Financial (there's no prior-cycle
-// flag snapshot yet to diff against — a known simplification, surfaced in the UI rather
-// than silently faked as real), the Historical dimension in full, and the Historical
-// performance / renewal economics figures.
+// per policy id: momentum for all three dimensions, the Historical grade and its
+// loss-ratio trend, and the Historical performance / renewal economics figures.
 export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   const rand = mulberry32(hashSeed(policy.id))
 
@@ -113,21 +153,30 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   const historicalGrade = pick(rand, GRADES)
   const historicalMomentum = pick(rand, MOMENTA)
 
-  // 3-cycle D&B score history, oldest first (higher = healthier).
-  const base = 40 + Math.floor(rand() * 40)
-  const step2 = Math.floor(rand() * 16) - 8
-  const step3 = Math.floor(rand() * 16) - 8
-  const dnbScoreHistory: [number, number, number] = [base, base + step2, base + step2 + step3]
-
-  const declining = dnbScoreHistory[2] < dnbScoreHistory[1] && dnbScoreHistory[1] < dnbScoreHistory[0]
-  // Watch: the 3-cycle trend is worsening but that decline hasn't (yet) moved the grade this cycle.
-  const trendWatch = declining && historicalMomentum === 'stable'
-
-  const lossRatio = Math.round(rand() * 90) / 100
-  const claimsPaid = Math.round(rand() * 50000)
+  // Loss ratio first, from a bell curve centered on a plausible commercial P&C target
+  // (60% mean, 15pt SD -- an assumption, easy to retune since this is mocked), clamped to
+  // a realistic range. claimsPaid is then derived from it so the three Historical
+  // performance figures are always internally consistent by construction
+  // (lossRatio === claimsPaid / cumulativePremium), instead of three independent draws
+  // that could visibly contradict each other.
+  const lossRatio = clamp(randNormal(rand, 0.6, 0.15), 0.15, 1.3)
   const cumulativePremium = Math.round(50000 + rand() * 200000)
+  const claimsPaid = Math.round(lossRatio * cumulativePremium)
   const claimFrequency = Math.round(rand() * 30) / 10
   const tenureYears = 1 + Math.floor(rand() * 12)
+
+  // Mocked 3-cycle loss-ratio trend ending at the current lossRatio -- drives the
+  // Historical card's sparkline and Watch tag. Previously these reused dnbScoreHistory,
+  // which is really a Company & Financial (D&B) signal, not a historical-claims one.
+  const stepA = (rand() - 0.5) * 0.24
+  const stepB = (rand() - 0.5) * 0.24
+  const midRatio = clamp(lossRatio - stepB, 0.1, 1.4)
+  const oldRatio = clamp(midRatio - stepA, 0.1, 1.4)
+  const lossRatioTrend: [number, number, number] = [oldRatio, midRatio, lossRatio]
+
+  const worsening = lossRatioTrend[2] > lossRatioTrend[1] && lossRatioTrend[1] > lossRatioTrend[0]
+  // Watch: the 3-cycle loss-ratio trend is worsening but that hasn't (yet) moved the grade this cycle.
+  const trendWatch = worsening && historicalMomentum === 'stable'
 
   const expiringPremium = Math.round(20000 + rand() * 80000)
   const movementPercent = Math.round((rand() * 30 - 10) * 10) / 10
@@ -135,10 +184,24 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
 
   return {
     verified,
-    operational: { grade: operationalGrade, momentum: operationalMomentum },
-    companyFinancial: companyFinancialGrade ? { grade: companyFinancialGrade, momentum: companyFinancialMomentum } : null,
-    historical: { grade: historicalGrade, momentum: historicalMomentum },
-    dnbScoreHistory,
+    operational: {
+      grade: operationalGrade,
+      momentum: operationalMomentum,
+      reason: `${operationalGrade} — ${operationalReason(policy)}`,
+    },
+    companyFinancial: companyFinancialGrade
+      ? {
+          grade: companyFinancialGrade,
+          momentum: companyFinancialMomentum,
+          reason: `${companyFinancialGrade} — ${companyFinancialReason(policy)}`,
+        }
+      : null,
+    historical: {
+      grade: historicalGrade,
+      momentum: historicalMomentum,
+      reason: historicalReason(historicalGrade, lossRatioTrend),
+    },
+    lossRatioTrend,
     trendWatch,
     historicalPerformance: { lossRatio, claimsPaid, cumulativePremium, claimFrequency, tenureYears },
     renewalEconomics: { expiringPremium, renewalPremium, movementPercent },
@@ -158,10 +221,10 @@ export type Recommendation = {
 // the recommendation text rather than silently ignored.
 export function computeRecommendation(rq: RiskQuality): Recommendation {
   const dims: Array<{ label: string; grade: Grade; momentum: Momentum }> = [
-    { label: 'Operational', ...rq.operational },
+    { label: 'Operational', grade: rq.operational.grade, momentum: rq.operational.momentum },
   ]
-  if (rq.companyFinancial) dims.push({ label: 'Company & Financial', ...rq.companyFinancial })
-  dims.push({ label: 'Historical', ...rq.historical })
+  if (rq.companyFinancial) dims.push({ label: 'Company & Financial', grade: rq.companyFinancial.grade, momentum: rq.companyFinancial.momentum })
+  dims.push({ label: 'Historical', grade: rq.historical.grade, momentum: rq.historical.momentum })
 
   const suffix = rq.companyFinancial ? '' : ' Company & Financial is not yet graded — Unverified.'
 
