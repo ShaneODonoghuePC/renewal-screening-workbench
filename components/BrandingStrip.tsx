@@ -15,27 +15,21 @@ const PINWHEEL_MARK = (
 )
 
 // #A1A67C alone reads washed out against a white page background (contrast ratio ~2.5:1,
-// under the 3:1 minimum for graphical objects) — darkened for the line segments specifically.
-const LINE_COLOR = '#71754F'
+// under the 3:1 minimum for graphical objects) — darkened for the line segments specifically
+// (Tailwind token: sage-line).
 
 function Line() {
-  return <div style={{ width: '2px', height: '32px', background: LINE_COLOR }} />
+  return <div className="h-8 w-0.5 bg-sage-line" />
 }
 
 function Lockup({ text }: { text: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+    <div className="flex flex-col items-center gap-2.5">
       {PINWHEEL_MARK}
+      {/* Tailwind has no writing-mode utility, so that one property stays inline. */}
       <span
-        style={{
-          writingMode: 'vertical-rl',
-          color: '#122933',
-          letterSpacing: '2px',
-          fontSize: '17px',
-          fontWeight: 600,
-          textTransform: 'lowercase',
-          whiteSpace: 'nowrap',
-        }}
+        style={{ writingMode: 'vertical-rl' }}
+        className="whitespace-nowrap text-[1.0625rem] font-semibold lowercase tracking-[2px] text-brand"
       >
         {text}
       </span>
@@ -47,23 +41,12 @@ export default function BrandingStrip() {
   return (
     <div
       data-testid="branding-strip"
-      style={{
-        position: 'fixed',
-        top: '50%',
-        right: 0,
-        transform: 'translateY(-50%)',
-        zIndex: 40,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '0 16px',
-        pointerEvents: 'none',
-      }}
+      className="pointer-events-none fixed top-1/2 right-0 z-40 flex -translate-y-1/2 flex-col items-center px-4"
     >
       <Line />
       <Lockup text="riskwatch" />
       <Line />
-      <div style={{ height: '24px' }} />
+      <div className="h-6" />
       <Lockup text="rw underwriting" />
       <Line />
     </div>

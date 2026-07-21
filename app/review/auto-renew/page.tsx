@@ -132,7 +132,7 @@ export default function AutoRenewLogPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Customer name…"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             />
           </label>
           {loading && <p className="text-sm text-slate-500">Loading…</p>}

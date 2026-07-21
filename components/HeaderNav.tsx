@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 const NAV_ITEMS = [
   { href: '/', label: 'Team View' },
   { href: '/review/auto-renew', label: 'Auto-Renew Log' },
+  { href: '/review/history', label: 'History' },
 ]
 
 export default function HeaderNav() {
@@ -19,10 +20,10 @@ export default function HeaderNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
               active
-                ? 'border-[#122933] bg-[#122933] text-white'
-                : 'border-[#122933] text-[#122933] hover:bg-[#122933]/5'
+                ? 'border-brand bg-brand text-white active:bg-brand-dark'
+                : 'border-brand text-brand hover:bg-brand/5 active:bg-brand/10'
             }`}
           >
             {item.label}

@@ -295,8 +295,10 @@ export default function TeamViewPage() {
           <button
             type="button"
             onClick={() => setSection('manual')}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              section === 'manual' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
+              section === 'manual'
+                ? 'bg-brand text-white active:bg-brand-dark'
+                : 'bg-white text-slate-700 border border-slate-200 active:bg-slate-100'
             }`}
           >
             Manual Review ({manualReviewItems.length})
@@ -304,8 +306,10 @@ export default function TeamViewPage() {
           <button
             type="button"
             onClick={() => setSection('navins')}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              section === 'navins' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
+              section === 'navins'
+                ? 'bg-brand text-white active:bg-brand-dark'
+                : 'bg-white text-slate-700 border border-slate-200 active:bg-slate-100'
             }`}
           >
             Navins Renew ({navinsItems.length})
@@ -318,7 +322,7 @@ export default function TeamViewPage() {
             <select
               value={selectedMonth}
               onChange={(event) => handleSelectMonth(event.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900"
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             >
               {tabs.map((tab) => (
                 <option key={tab.value} value={tab.value}>{tab.label}</option>
@@ -332,7 +336,7 @@ export default function TeamViewPage() {
               <select
                 value={attentionFilter}
                 onChange={(event) => setAttentionFilter(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900"
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               >
                 <option value="">All</option>
                 {ATTENTION_OPTIONS.map((option) => (
@@ -347,7 +351,7 @@ export default function TeamViewPage() {
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900"
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             >
               <option value="">All</option>
               {statusOptions.map((option) => (
@@ -361,7 +365,7 @@ export default function TeamViewPage() {
             <select
               value={assignedFilter}
               onChange={(event) => setAssignedFilter(event.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900"
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             >
               <option value="">All</option>
               <option value="unassigned">Unassigned</option>
@@ -376,7 +380,7 @@ export default function TeamViewPage() {
             <select
               value={sortField}
               onChange={(event) => setSortField(event.target.value as typeof sortField)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900"
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             >
               <option value="renewalDate">Renewal date</option>
               <option value="attention">Attention</option>
@@ -387,7 +391,7 @@ export default function TeamViewPage() {
           <button
             type="button"
             onClick={() => setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           >
             {sortDir === 'asc' ? 'Ascending ↑' : 'Descending ↓'}
           </button>
@@ -407,8 +411,10 @@ export default function TeamViewPage() {
                   onClick={() =>
                     setFlagFilter((prev) => (active ? prev.filter((f) => f !== flag) : [...prev, flag]))
                   }
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                    active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
+                    active
+                      ? 'bg-brand text-white active:bg-brand-dark'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300'
                   }`}
                 >
                   {flag}
@@ -448,7 +454,7 @@ export default function TeamViewPage() {
                         <button
                           type="button"
                           onClick={() => setReviewPolicyId(item.id)}
-                          className="rounded-lg border border-[#122933] px-2 py-1 text-xs font-semibold text-[#122933] hover:bg-[#122933]/5"
+                          className="rounded-lg border border-brand px-2 py-1 text-xs font-semibold text-brand hover:bg-brand/5 active:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                         >
                           Review
                         </button>
@@ -456,7 +462,7 @@ export default function TeamViewPage() {
                           <button
                             type="button"
                             onClick={() => updatePolicy(item.id, item.status ?? 'New', currentUserId)}
-                            className="rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-700"
+                            className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                           >
                             Assign to me
                           </button>
@@ -464,7 +470,7 @@ export default function TeamViewPage() {
                         <select
                           value={item.assignedUserId ?? ''}
                           onChange={(event) => updatePolicy(item.id, item.status ?? 'New', event.target.value || null)}
-                          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                         >
                           <option value="">Unassigned</option>
                           {users.map((user) => (
@@ -514,7 +520,7 @@ export default function TeamViewPage() {
                           <button
                             type="button"
                             onClick={() => updatePolicy(item.id, item.status ?? 'Pending', currentUserId)}
-                            className="rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-700"
+                            className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                           >
                             Assign to me
                           </button>
@@ -522,7 +528,7 @@ export default function TeamViewPage() {
                         <select
                           value={item.assignedUserId ?? ''}
                           onChange={(event) => updatePolicy(item.id, item.status ?? 'Pending', event.target.value || null)}
-                          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                         >
                           <option value="">Unassigned</option>
                           {users.map((user) => (
@@ -533,7 +539,7 @@ export default function TeamViewPage() {
                           <button
                             type="button"
                             onClick={() => updatePolicy(item.id, 'Done', item.assignedUserId)}
-                            className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                            className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 active:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                           >
                             Mark done
                           </button>

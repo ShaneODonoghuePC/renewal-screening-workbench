@@ -1,25 +1,29 @@
+import { Inter } from 'next/font/google'
 import './globals.css'
 import ActingAsPicker from '@/components/ActingAsPicker'
 import BrandingStrip from '@/components/BrandingStrip'
 import HeaderNav from '@/components/HeaderNav'
 
+const inter = Inter({ subsets: ['latin'], display: 'swap' })
+
 export const metadata = {
   title: 'Renewal Screening Workbench',
+  description: 'Internal underwriting workbench for screening and reviewing policy renewals.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <header style={{padding:'12px 16px',borderBottom:'1px solid #eee',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <h1 className="text-xl font-bold tracking-wide text-[#122933]">Renewal Screening Workbench</h1>
+      <body className={inter.className}>
+        <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <h1 className="text-xl font-bold tracking-wide text-brand">Renewal Screening Workbench</h1>
           <div className="flex items-center gap-4">
             <HeaderNav />
             <ActingAsPicker />
           </div>
         </header>
-        <main style={{padding:'16px',paddingRight:'100px'}}>{children}</main>
-        <footer style={{padding:'10px 16px',borderTop:'1px solid #eee',textAlign:'center',fontSize:'12px',color:'#64748b'}}>
+        <main className="p-4 pr-[6.25rem]">{children}</main>
+        <footer className="border-t border-slate-200 px-4 py-2.5 text-center text-xs text-slate-500">
           This is a demo application. Data and figures are illustrative.
         </footer>
         <BrandingStrip />

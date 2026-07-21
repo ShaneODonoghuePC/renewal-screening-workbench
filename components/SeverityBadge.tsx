@@ -5,14 +5,14 @@
 export default function SeverityBadge({ attention }: { attention: string | null | undefined }) {
   if (attention === 'High') {
     return (
-      <span className="inline-flex rounded-full bg-[#122933] px-2.5 py-0.5 text-xs font-semibold text-white">
+      <span className="inline-flex rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white">
         High
       </span>
     )
   }
   if (attention === 'Medium') {
     return (
-      <span className="inline-flex rounded-full bg-[#A1A67C] px-2.5 py-0.5 text-xs font-semibold text-[#122933]">
+      <span className="inline-flex rounded-full bg-sage px-2.5 py-0.5 text-xs font-semibold text-brand">
         Medium
       </span>
     )

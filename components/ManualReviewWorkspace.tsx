@@ -276,7 +276,7 @@ export default function ManualReviewWorkspace({
               value={statusState.status}
               onChange={(event) => changeStatus(event.target.value)}
               disabled={saving}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
             >
               {statusOptions.map((option) => (
                 <option key={option} value={option}>{option}</option>
@@ -294,7 +294,7 @@ export default function ManualReviewWorkspace({
                     type="button"
                     onClick={() => changeStatus(qt.target)}
                     disabled={saving}
-                    className="rounded-lg bg-[#122933] px-3 py-2 text-sm font-semibold text-white hover:bg-[#1c3a49] disabled:opacity-60"
+                    className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-dark active:bg-brand-dark disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                   >
                     {qt.label}
                   </button>
@@ -309,7 +309,7 @@ export default function ManualReviewWorkspace({
               value={statusState.assignedUserId ?? ''}
               onChange={(event) => changeAssignment(event.target.value || null)}
               disabled={saving}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
             >
               <option value="">Unassigned</option>
               {users.map((user) => (
@@ -323,7 +323,7 @@ export default function ManualReviewWorkspace({
               type="button"
               onClick={() => changeAssignment(currentUserId)}
               disabled={saving}
-              className="self-end rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-60"
+              className="self-end rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-dark active:bg-brand-dark disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             >
               Assign to me
             </button>
@@ -351,13 +351,13 @@ export default function ManualReviewWorkspace({
                 onChange={(event) => setCommentDraft(event.target.value)}
                 placeholder="Add a comment…"
                 rows={2}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               />
               <button
                 type="button"
                 onClick={submitComment}
                 disabled={saving || !commentDraft.trim()}
-                className="self-start rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-60"
+                className="self-start rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark active:bg-brand-dark disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               >
                 Add comment
               </button>

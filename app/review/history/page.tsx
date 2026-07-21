@@ -96,8 +96,10 @@ export default function HistoryPage() {
           <button
             type="button"
             onClick={() => setSection('manual')}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              section === 'manual' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
+              section === 'manual'
+                ? 'bg-brand text-white active:bg-brand-dark'
+                : 'bg-white text-slate-700 border border-slate-200 active:bg-slate-100'
             }`}
           >
             Manual Review, Closed ({manualReviewItems.length})
@@ -105,8 +107,10 @@ export default function HistoryPage() {
           <button
             type="button"
             onClick={() => setSection('navins')}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              section === 'navins' ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
+              section === 'navins'
+                ? 'bg-brand text-white active:bg-brand-dark'
+                : 'bg-white text-slate-700 border border-slate-200 active:bg-slate-100'
             }`}
           >
             Navins Renew, Done ({navinsItems.length})
