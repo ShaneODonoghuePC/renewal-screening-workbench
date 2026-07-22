@@ -16,6 +16,7 @@ export async function GET(request: Request) {
       .select({
         id: policies.id,
         customerName: policies.customerName,
+        brokerName: policies.brokerName,
         premium: policies.premium,
         attention: policies.attention,
         flagReasons: policies.flagReasons,

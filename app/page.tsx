@@ -15,6 +15,7 @@ import ExpandCaret from '@/components/ExpandCaret'
 type TeamItem = {
   id: string
   customerName: string
+  brokerName: string | null
   premium: number | null
   attention: string | null
   flagReasons: string | null
@@ -74,6 +75,7 @@ export default function TeamViewPage() {
   const [attentionFilter, setAttentionFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [assignedFilter, setAssignedFilter] = useState('')
+  const [brokerFilter, setBrokerFilter] = useState('')
   const [flagFilter, setFlagFilter] = useState<string[]>([])
   const [sortField, setSortField] = useState<'renewalDate' | 'attention' | 'status'>('renewalDate')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -144,21 +146,27 @@ export default function TeamViewPage() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [flagDropdownOpen])
 
-  // Tabs/default-month are scoped to Manual Review + Navins Renew only (what the tables
-  // below actually show) — Auto Renew rows are in `items` purely for the summary strip's
-  // auto-renew count and shouldn't shift month labels/counts or the default-month pick.
+  // Tabs are scoped to Manual Review + Navins Renew only (what the tables below actually
+  // show) — Auto Renew rows are in `items` purely for the summary strip's auto-renew
+  // count and shouldn't shift month labels/counts.
   const teamOnlyItems = useMemo(() => items.filter((item) => item.routing !== 'RPUX Auto Renew'), [items])
-  const { tabs, defaultMonth } = useMemo(() => buildMonthTabs(teamOnlyItems), [teamOnlyItems])
+  const { tabs } = useMemo(() => buildMonthTabs(teamOnlyItems), [teamOnlyItems])
+
+  // Assignment & Management defaults to "All" rather than buildMonthTabs's own
+  // soonest-outstanding-month default (which Auto-Renew Log still uses) — overridden
+  // here at the call site rather than in the shared helper, since the two pages want
+  // different defaults.
+  const pageDefaultMonth = 'all'
 
   const monthParam = searchParams.get('month')
-  const selectedMonth = monthParam && tabs.some((tab) => tab.value === monthParam) ? monthParam : defaultMonth
+  const selectedMonth = monthParam && tabs.some((tab) => tab.value === monthParam) ? monthParam : pageDefaultMonth
 
   // Reflect the resolved default in the URL once data is loaded, without adding a history entry.
   useEffect(() => {
     if (!monthParam && items.length > 0) {
-      router.replace(`${pathname}?month=${defaultMonth}`)
+      router.replace(`${pathname}?month=${pageDefaultMonth}`)
     }
-  }, [monthParam, items.length, defaultMonth, pathname, router])
+  }, [monthParam, items.length, pathname, router])
 
   const handleSelectMonth = (value: string) => {
     router.push(`${pathname}?month=${value}`)
@@ -213,6 +221,17 @@ export default function TeamViewPage() {
     return [...set].sort()
   }, [manualReviewItems])
 
+  // Broker options scoped to whichever table is currently active, same as Flag type's
+  // availableFlags -- populated from the month-filtered, pre-other-filter item list.
+  const availableBrokers = useMemo(() => {
+    const sourceItems = section === 'manual' ? manualReviewItems : navinsItems
+    const set = new Set<string>()
+    sourceItems.forEach((item) => {
+      if (item.brokerName) set.add(item.brokerName)
+    })
+    return [...set].sort()
+  }, [section, manualReviewItems, navinsItems])
+
   const sortItems = useCallback(
     (list: TeamItem[]) => {
       const sorted = [...list].sort((a, b) => {
@@ -237,6 +256,7 @@ export default function TeamViewPage() {
     if (statusFilter) result = result.filter((item) => item.status === statusFilter)
     if (assignedFilter === 'unassigned') result = result.filter((item) => !item.assignedUserId)
     else if (assignedFilter) result = result.filter((item) => item.assignedUserId === assignedFilter)
+    if (brokerFilter) result = result.filter((item) => item.brokerName === brokerFilter)
     if (flagFilter.length > 0) {
       result = result.filter((item) => {
         const flags = flagList(item.flagReasons)
@@ -244,15 +264,16 @@ export default function TeamViewPage() {
       })
     }
     return sortItems(result)
-  }, [manualReviewItems, attentionFilter, statusFilter, assignedFilter, flagFilter, sortItems])
+  }, [manualReviewItems, attentionFilter, statusFilter, assignedFilter, brokerFilter, flagFilter, sortItems])
 
   const filteredNavins = useMemo(() => {
     let result = navinsItems
     if (statusFilter) result = result.filter((item) => item.status === statusFilter)
     if (assignedFilter === 'unassigned') result = result.filter((item) => !item.assignedUserId)
     else if (assignedFilter) result = result.filter((item) => item.assignedUserId === assignedFilter)
+    if (brokerFilter) result = result.filter((item) => item.brokerName === brokerFilter)
     return sortItems(result)
-  }, [navinsItems, statusFilter, assignedFilter, sortItems])
+  }, [navinsItems, statusFilter, assignedFilter, brokerFilter, sortItems])
 
   const userNameById = useMemo(() => {
     const map = new Map<string, string>()
@@ -292,10 +313,25 @@ export default function TeamViewPage() {
       <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Assignment & Management</h1>
-          <p className="text-xs text-slate-500">
-            Defaults to your own assigned items. Switch "Assigned to" below to see the whole team's.
-          </p>
         </div>
+      </section>
+
+      {/* Month picker: the first thing to interact with, since the time period being
+          viewed should be obvious at a glance -- pulled out of the filter bar below and
+          defaulted to "All" (a page-level override; see pageDefaultMonth above). */}
+      <section className="flex items-center gap-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+          Month
+          <select
+            value={selectedMonth}
+            onChange={(event) => handleSelectMonth(event.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+          >
+            {tabs.map((tab) => (
+              <option key={tab.value} value={tab.value}>{tab.label}</option>
+            ))}
+          </select>
+        </label>
       </section>
 
       {error && (
@@ -354,19 +390,6 @@ export default function TeamViewPage() {
         </div>
 
         <div className="mb-4 flex flex-wrap items-end gap-4">
-          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-            Month
-            <select
-              value={selectedMonth}
-              onChange={(event) => handleSelectMonth(event.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-            >
-              {tabs.map((tab) => (
-                <option key={tab.value} value={tab.value}>{tab.label}</option>
-              ))}
-            </select>
-          </label>
-
           {section === 'manual' && (
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
               Attention
@@ -408,6 +431,20 @@ export default function TeamViewPage() {
               <option value="unassigned">Unassigned</option>
               {users.map((user) => (
                 <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+            Broker
+            <select
+              value={brokerFilter}
+              onChange={(event) => setBrokerFilter(event.target.value)}
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+            >
+              <option value="">All</option>
+              {availableBrokers.map((broker) => (
+                <option key={broker} value={broker}>{broker}</option>
               ))}
             </select>
           </label>
@@ -478,6 +515,7 @@ export default function TeamViewPage() {
                   <th className="px-4 py-3 font-medium"></th>
                   <th className="px-4 py-3 font-medium">Policy</th>
                   <th className="px-4 py-3 font-medium">Customer</th>
+                  <th className="px-4 py-3 font-medium">Broker</th>
                   <th className="px-4 py-3 font-medium">Attention</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Renewal date</th>
@@ -502,6 +540,7 @@ export default function TeamViewPage() {
                         </td>
                         <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
                         <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
+                        <td className="px-4 py-4 text-slate-700">{item.brokerName || EMPTY_VALUE}</td>
                         <td className="px-4 py-4"><SeverityBadge attention={item.attention} /></td>
                         <td className="px-4 py-4 text-slate-700">{collapseStatus(item.status)}</td>
                         <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
@@ -551,7 +590,7 @@ export default function TeamViewPage() {
                       </tr>
                       {isExpanded && (
                         <tr key={`${item.id}-expanded`}>
-                          <td colSpan={8} className="bg-slate-50 px-6 py-5">
+                          <td colSpan={9} className="bg-slate-50 px-6 py-5">
                             <h3 className="mb-3 text-sm font-semibold text-slate-900">Underwriter Workspace</h3>
                             <UnderwriterWorkspace policyId={item.id} routing={item.routing} onUpdate={loadAll} />
                           </td>
@@ -562,7 +601,7 @@ export default function TeamViewPage() {
                 })}
                 {filteredManualReview.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
+                    <td colSpan={9} className="px-4 py-8 text-center text-sm text-slate-500">
                       No Manual Review items match the current filters.
                     </td>
                   </tr>
@@ -578,6 +617,7 @@ export default function TeamViewPage() {
                   <th className="px-4 py-3 font-medium"></th>
                   <th className="px-4 py-3 font-medium">Policy</th>
                   <th className="px-4 py-3 font-medium">Customer</th>
+                  <th className="px-4 py-3 font-medium">Broker</th>
                   <th className="px-4 py-3 font-medium">Renewal date</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Assigned to</th>
@@ -601,6 +641,7 @@ export default function TeamViewPage() {
                         </td>
                         <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
                         <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
+                        <td className="px-4 py-4 text-slate-700">{item.brokerName || EMPTY_VALUE}</td>
                         <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
                         <td className="px-4 py-4 text-slate-700">{collapseStatus(item.status)}</td>
                         <td className="px-4 py-4 text-slate-700">
@@ -639,7 +680,7 @@ export default function TeamViewPage() {
                       </tr>
                       {isExpanded && (
                         <tr key={`${item.id}-expanded`}>
-                          <td colSpan={7} className="bg-slate-50 px-6 py-5">
+                          <td colSpan={8} className="bg-slate-50 px-6 py-5">
                             <h3 className="mb-3 text-sm font-semibold text-slate-900">Underwriter Workspace</h3>
                             <UnderwriterWorkspace policyId={item.id} routing={item.routing} onUpdate={loadAll} />
                           </td>
@@ -650,7 +691,7 @@ export default function TeamViewPage() {
                 })}
                 {filteredNavins.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                    <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
                       No Navins Renew items match the current filters.
                     </td>
                   </tr>
