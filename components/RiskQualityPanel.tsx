@@ -96,7 +96,7 @@ function GradeCard({
   history?: [number, number, number]
 }) {
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-4">
+    <div className="rounded-md border border-slate-200 bg-white p-3">
       <div className="flex items-center justify-between">
         <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
           {label}
@@ -118,7 +118,12 @@ function GradeCard({
           </span>
         )}
       </div>
-      <div className="mt-2 flex items-center gap-3">
+      {/* Grade circle centered horizontally (middle of a 1fr/auto/1fr grid); the
+          sparkline sits in the right-hand column, just to the right of the circle --
+          acceptable for the circle+sparkline pair to look a little off-center as a
+          whole, only the circle itself needs to be centered. */}
+      <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center">
+        <span aria-hidden="true" />
         {grade ? (
           <span
             className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold ${gradeBadgeClasses(grade)}`}
@@ -130,7 +135,7 @@ function GradeCard({
             N/A
           </span>
         )}
-        {history && <Sparkline values={history} />}
+        <span className="pl-2">{history && <Sparkline values={history} />}</span>
       </div>
       {reason && <p className="mt-2 text-xs text-slate-500">{reason}</p>}
       {!grade && <p className="mt-2 text-xs text-slate-500">Not yet graded: Unverified.</p>}
@@ -229,12 +234,13 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-200 bg-slate-50 p-6 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{policy.id}</h1>
-            <p className="mt-1 text-sm text-slate-600">{policy.customerName}</p>
-          </div>
+      {/* Identity & Context -- the old hero section (policy ID/customer name in a grey
+          box up top) duplicated fields already itemized here, so it's gone; the Verified
+          pill and Attention badge it used to carry moved down into this section's own
+          header row instead. */}
+      <section className="border-b border-slate-200 pb-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
           <div className="flex items-center gap-2">
             <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${verifiedPillClasses(dnbVerified)}`}>
               {dnbVerified ? 'Data Verified (D&B match found)' : 'Data Not Verified (D&B No Match)'}
@@ -242,11 +248,6 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
             <SeverityBadge attention={policy.attention} />
           </div>
         </div>
-      </section>
-
-      {/* Identity & Context */}
-      <section className="border-b border-slate-200 pb-6">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
         <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
           <div><dt className="text-slate-500">Policy number</dt><dd className="font-medium text-slate-900">{policy.id}</dd></div>
           <div><dt className="text-slate-500">Customer name</dt><dd className="font-medium text-slate-900">{policy.customerName}</dd></div>
@@ -262,7 +263,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
           are derived from real flag data; Historical and the figures below are still mocked.
           Section stays boxed (unlike the report-style sections around it) specifically so
           the worst-of-three grade coloring below means something. */}
-      <section className={`rounded-lg border p-6 shadow-sm ${riskQualitySectionClasses(sectionGrade)}`}>
+      <section className={`rounded-lg border p-4 shadow-sm ${riskQualitySectionClasses(sectionGrade)}`}>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Risk Quality</h2>
 
         {!riskQuality.verified && (

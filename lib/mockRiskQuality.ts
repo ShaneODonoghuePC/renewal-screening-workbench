@@ -5,6 +5,7 @@ export type DimensionGrade = { grade: Grade; momentum: Momentum; reason: string 
 
 export type RiskQualityInput = {
   id: string
+  premium: number | null
   openClaim: boolean
   premiumUnpaid: boolean
   renewalTypeManual: boolean
@@ -205,9 +206,18 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   // Watch: the 3-cycle loss-ratio trend is worsening but that hasn't (yet) moved the grade this cycle.
   const trendWatch = worsening && historicalMomentum === 'stable'
 
-  const expiringPremium = Math.round(20000 + rand() * 80000)
+  // Renewal economics: the renewal-year figure is the same real premium shown in
+  // Identity & Context (policy.premium), not an independently generated number -- these
+  // used to be two disconnected values that happened to both be called "premium." The
+  // expiring-year figure is derived by reversing the synthesized movement percentage off
+  // that real base, the same way lossRatio/claimsPaid were made internally consistent above.
   const movementPercent = Math.round((rand() * 30 - 10) * 10) / 10
-  const renewalPremium = Math.round(expiringPremium * (1 + movementPercent / 100))
+  // Not rounded when sourced from the real policy.premium -- rounding here would make
+  // this figure and Identity & Context's Premium field merely *close*, not identical,
+  // for any premium with cents. The expiring-year figure is still a synthesized
+  // estimate, so it's fine to round.
+  const renewalPremium = policy.premium != null && policy.premium > 0 ? policy.premium : Math.round(20000 + rand() * 80000)
+  const expiringPremium = Math.round(renewalPremium / (1 + movementPercent / 100))
 
   return {
     verified,
