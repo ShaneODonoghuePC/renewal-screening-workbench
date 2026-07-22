@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import ManualReviewWorkspace from '@/components/ManualReviewWorkspace'
+import RiskQualityPanel from '@/components/RiskQualityPanel'
 
 export default function ManualReviewDetailPage() {
   const params = useParams<{ id: string }>()
@@ -11,7 +11,7 @@ export default function ManualReviewDetailPage() {
   return (
     <div className="space-y-6">
       <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to Assignment & Management</Link>
-      <ManualReviewWorkspace policyId={policyId} />
+      <RiskQualityPanel policyId={policyId} />
     </div>
   )
 }
