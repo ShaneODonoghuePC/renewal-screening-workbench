@@ -6,9 +6,10 @@ import { and, eq, inArray, or } from 'drizzle-orm/sql'
 
 export const dynamic = 'force-dynamic'
 
-// Audit trail for closed-out items: Manual Review policies at Closed, Navins Renew
-// policies at Done. Read-only, summary only — no drill-in, so this deliberately doesn't
-// return the full flag/comment/activity detail the Underwriter Workspace does.
+// Audit trail for closed-out items: Manual Review policies at a terminal status
+// (Renewed/Not Renewed), Navins Renew policies at a terminal status (Quote Declined/
+// Renewed/Not Renewed). Read-only, summary only — no drill-in, so this deliberately
+// doesn't return the full flag/comment/activity detail the Underwriter Workspace does.
 export async function GET(request: Request) {
   return withSession(request, async (session) => {
     const items = await db
@@ -24,7 +25,10 @@ export async function GET(request: Request) {
       .where(
         and(
           eq(policies.country, session.country),
-          or(eq(reviewStates.status, 'Closed'), eq(reviewStates.status, 'Done'))
+          or(
+            and(eq(policies.routing, 'Manual Review'), inArray(reviewStates.status, ['Renewed', 'Not Renewed'])),
+            and(eq(policies.routing, 'NAVINS Renew'), inArray(reviewStates.status, ['Quote Declined', 'Renewed', 'Not Renewed']))
+          )
         )
       )
 

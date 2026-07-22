@@ -113,7 +113,7 @@ export default function HistoryPage() {
                 : 'bg-white text-slate-700 border border-slate-200 active:bg-slate-100'
             }`}
           >
-            Navins Renew, Done ({navinsItems.length})
+            Navins Renew, Closed ({navinsItems.length})
           </button>
           {loading && <p className="self-center text-sm text-slate-500">Loading…</p>}
         </div>
@@ -126,7 +126,7 @@ export default function HistoryPage() {
                 <th className="px-4 py-3 font-medium">Customer</th>
                 <th className="px-4 py-3 font-medium">Renewal date</th>
                 <th className="px-4 py-3 font-medium">Final status</th>
-                <th className="px-4 py-3 font-medium">{section === 'manual' ? 'Date closed' : 'Date marked done'}</th>
+                <th className="px-4 py-3 font-medium">Date closed</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -142,7 +142,7 @@ export default function HistoryPage() {
               {visibleItems.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">
-                    {section === 'manual' ? 'No closed Manual Review items yet.' : 'No completed Navins Renew items yet.'}
+                    {section === 'manual' ? 'No closed Manual Review items yet.' : 'No closed Navins Renew items yet.'}
                   </td>
                 </tr>
               )}
