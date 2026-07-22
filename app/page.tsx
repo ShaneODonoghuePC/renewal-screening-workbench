@@ -4,10 +4,13 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { deriveRenewalMonth } from '@/lib/renewalMonth'
 import { buildMonthTabs } from '@/lib/monthTabs'
+import { isTerminalStatus } from '@/lib/statusWorkflow'
 import { EMPTY_VALUE } from '@/lib/format'
 import SeverityBadge from '@/components/SeverityBadge'
 import SlideOutPanel from '@/components/SlideOutPanel'
-import ManualReviewWorkspace from '@/components/ManualReviewWorkspace'
+import RiskQualityPanel from '@/components/RiskQualityPanel'
+import UnderwriterWorkspace from '@/components/UnderwriterWorkspace'
+import ExpandCaret from '@/components/ExpandCaret'
 
 type TeamItem = {
   id: string
@@ -24,10 +27,11 @@ type TeamItem = {
 type Identity = { id: string; name: string; country: string }
 
 const ATTENTION_OPTIONS = ['High', 'Medium', 'None']
-// Closed/Done items never appear in Team View (they move to History instead, §5.7), so
-// those two statuses aren't offered as filter options here — they'd always return nothing.
-const MANUAL_REVIEW_STATUSES = ['New', 'In Review', 'Renewed', 'Not Renewed', 'Escalated']
-const NAVINS_STATUSES = ['Pending']
+// Terminal statuses (Renewed/Not Renewed/Quote Declined) never appear here -- they move
+// to Closed Items instead -- so they aren't offered as filter options; they'd always
+// return nothing.
+const MANUAL_REVIEW_STATUSES = ['Not Started', 'In Review', 'With Broker']
+const NAVINS_STATUSES = ['Not Started', 'Quote Sent', 'Policy Sent']
 
 function formatDate(renewalDate: string | null) {
   if (!renewalDate) return EMPTY_VALUE
@@ -45,6 +49,14 @@ function attentionRank(attention: string | null) {
 function flagList(flagReasons: string | null) {
   if (!flagReasons) return []
   return flagReasons.split(',').map((s) => s.trim()).filter(Boolean)
+}
+
+// Table-level display only (Phase 2A): the real, specific state (In Review/With Broker/
+// Quote Sent/Policy Sent) is visible once a row is expanded, inside the Underwriter
+// Workspace status control -- the collapsed table just shows whether work has begun.
+function collapseStatus(status: string | null) {
+  if (!status) return EMPTY_VALUE
+  return status === 'Not Started' ? 'Not Started' : 'Started'
 }
 
 export default function TeamViewPage() {
@@ -69,6 +81,7 @@ export default function TeamViewPage() {
   // applied once per identity, not re-forced if the user deliberately switches it to "All"/someone else.
   const [defaultFilterApplied, setDefaultFilterApplied] = useState(false)
   const [reviewPolicyId, setReviewPolicyId] = useState<string | null>(null)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [flagDropdownOpen, setFlagDropdownOpen] = useState(false)
   const flagDropdownRef = useRef<HTMLDivElement>(null)
 
@@ -161,15 +174,16 @@ export default function TeamViewPage() {
     })
   }, [items, selectedMonth])
 
-  // Closed (Manual Review) / Done (Navins Renew) items are filtered out here — a display
-  // change only, per §5.3: the underlying data/status is untouched, they just move to
-  // History (§5.7) instead of staying visible in the working queues.
+  // Terminal items (Renewed/Not Renewed for Manual Review; Quote Declined/Renewed/Not
+  // Renewed for Navins Renew) are filtered out here — a display change only: the
+  // underlying data/status is untouched, they just move to Closed Items instead of
+  // staying visible in the working queues.
   const manualReviewItems = useMemo(
-    () => monthFilteredItems.filter((item) => item.routing === 'Manual Review' && item.status !== 'Closed'),
+    () => monthFilteredItems.filter((item) => item.routing === 'Manual Review' && !isTerminalStatus(item.routing, item.status)),
     [monthFilteredItems]
   )
   const navinsItems = useMemo(
-    () => monthFilteredItems.filter((item) => item.routing === 'NAVINS Renew' && item.status !== 'Done'),
+    () => monthFilteredItems.filter((item) => item.routing === 'NAVINS Renew' && !isTerminalStatus(item.routing, item.status)),
     [monthFilteredItems]
   )
   const autoRenewItems = useMemo(
@@ -180,7 +194,7 @@ export default function TeamViewPage() {
   // Summary strip counts — scoped to the selected month only, independent of the
   // Attention/Status/Assigned-to filters below (an at-a-glance overview of the whole
   // month's caseload, not whichever narrow slice happens to be currently filtered).
-  // Counts reflect the same open-items filtering as the tables (Closed/Done excluded)
+  // Counts reflect the same open-items filtering as the tables (terminal items excluded)
   // so the tiles and tables never disagree with each other.
   const summary = useMemo(() => {
     const totalFlagsRaised = manualReviewItems.reduce((sum, item) => sum + flagList(item.flagReasons).length, 0)
@@ -260,6 +274,15 @@ export default function TeamViewPage() {
         item.id === id ? { ...item, status: updated.status, assignedUserId: updated.assignedUserId } : item
       )
     )
+  }
+
+  const toggleExpanded = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   const statusOptions = section === 'manual' ? MANUAL_REVIEW_STATUSES : NAVINS_STATUSES
@@ -452,6 +475,7 @@ export default function TeamViewPage() {
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-slate-500">
                 <tr>
+                  <th className="px-4 py-3 font-medium"></th>
                   <th className="px-4 py-3 font-medium">Policy</th>
                   <th className="px-4 py-3 font-medium">Customer</th>
                   <th className="px-4 py-3 font-medium">Attention</th>
@@ -462,51 +486,75 @@ export default function TeamViewPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {filteredManualReview.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
-                    <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
-                    <td className="px-4 py-4"><SeverityBadge attention={item.attention} /></td>
-                    <td className="px-4 py-4 text-slate-700">{item.status}</td>
-                    <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
-                    <td className="px-4 py-4 text-slate-700">
-                      {item.assignedUserId ? userNameById.get(item.assignedUserId) ?? item.assignedUserId : 'Unassigned'}
-                    </td>
-                    <td className="px-4 py-4 text-slate-700">
-                      <div className="flex flex-col gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setReviewPolicyId(item.id)}
-                          className="rounded-lg border border-brand px-2 py-1 text-xs font-semibold text-brand hover:bg-brand/5 active:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-                        >
-                          Review
-                        </button>
-                        {!item.assignedUserId && currentUserId && (
+                {filteredManualReview.map((item) => {
+                  const isExpanded = expandedRows.has(item.id)
+                  return (
+                    <>
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-4">
                           <button
                             type="button"
-                            onClick={() => updatePolicy(item.id, item.status ?? 'New', currentUserId)}
-                            className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                            onClick={() => toggleExpanded(item.id)}
+                            aria-expanded={isExpanded}
+                            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} Underwriter Workspace for ${item.id}`}
+                            className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                           >
-                            Assign to me
+                            <ExpandCaret expanded={isExpanded} />
                           </button>
-                        )}
-                        <select
-                          value={item.assignedUserId ?? ''}
-                          onChange={(event) => updatePolicy(item.id, item.status ?? 'New', event.target.value || null)}
-                          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                        >
-                          <option value="">Unassigned</option>
-                          {users.map((user) => (
-                            <option key={user.id} value={user.id}>{user.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </td>
+                        <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
+                        <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
+                        <td className="px-4 py-4"><SeverityBadge attention={item.attention} /></td>
+                        <td className="px-4 py-4 text-slate-700">{collapseStatus(item.status)}</td>
+                        <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
+                        <td className="px-4 py-4 text-slate-700">
+                          {item.assignedUserId ? userNameById.get(item.assignedUserId) ?? item.assignedUserId : 'Unassigned'}
+                        </td>
+                        <td className="px-4 py-4 text-slate-700">
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setReviewPolicyId(item.id)}
+                              className="rounded-lg border border-brand px-2 py-1 text-xs font-semibold text-brand hover:bg-brand/5 active:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                            >
+                              Review
+                            </button>
+                            {!item.assignedUserId && currentUserId && (
+                              <button
+                                type="button"
+                                onClick={() => updatePolicy(item.id, item.status ?? 'Not Started', currentUserId)}
+                                className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                              >
+                                Assign to me
+                              </button>
+                            )}
+                            <select
+                              value={item.assignedUserId ?? ''}
+                              onChange={(event) => updatePolicy(item.id, item.status ?? 'Not Started', event.target.value || null)}
+                              className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                            >
+                              <option value="">Unassigned</option>
+                              {users.map((user) => (
+                                <option key={user.id} value={user.id}>{user.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr key={`${item.id}-expanded`}>
+                          <td colSpan={8} className="bg-slate-50 px-6 py-5">
+                            <h3 className="mb-3 text-sm font-semibold text-slate-900">Underwriter Workspace</h3>
+                            <UnderwriterWorkspace policyId={item.id} routing={item.routing} onUpdate={loadAll} />
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )
+                })}
                 {filteredManualReview.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                    <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
                       No Manual Review items match the current filters.
                     </td>
                   </tr>
@@ -519,6 +567,7 @@ export default function TeamViewPage() {
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-slate-500">
                 <tr>
+                  <th className="px-4 py-3 font-medium"></th>
                   <th className="px-4 py-3 font-medium">Policy</th>
                   <th className="px-4 py-3 font-medium">Customer</th>
                   <th className="px-4 py-3 font-medium">Renewal date</th>
@@ -528,52 +577,67 @@ export default function TeamViewPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {filteredNavins.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
-                    <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
-                    <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
-                    <td className="px-4 py-4 text-slate-700">{item.status}</td>
-                    <td className="px-4 py-4 text-slate-700">
-                      {item.assignedUserId ? userNameById.get(item.assignedUserId) ?? item.assignedUserId : 'Unassigned'}
-                    </td>
-                    <td className="px-4 py-4 text-slate-700">
-                      <div className="flex flex-col gap-1">
-                        {!item.assignedUserId && currentUserId && (
+                {filteredNavins.map((item) => {
+                  const isExpanded = expandedRows.has(item.id)
+                  return (
+                    <>
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-4">
                           <button
                             type="button"
-                            onClick={() => updatePolicy(item.id, item.status ?? 'Pending', currentUserId)}
-                            className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                            onClick={() => toggleExpanded(item.id)}
+                            aria-expanded={isExpanded}
+                            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} Underwriter Workspace for ${item.id}`}
+                            className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                           >
-                            Assign to me
+                            <ExpandCaret expanded={isExpanded} />
                           </button>
-                        )}
-                        <select
-                          value={item.assignedUserId ?? ''}
-                          onChange={(event) => updatePolicy(item.id, item.status ?? 'Pending', event.target.value || null)}
-                          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                        >
-                          <option value="">Unassigned</option>
-                          {users.map((user) => (
-                            <option key={user.id} value={user.id}>{user.name}</option>
-                          ))}
-                        </select>
-                        {item.status === 'Pending' && (
-                          <button
-                            type="button"
-                            onClick={() => updatePolicy(item.id, 'Done', item.assignedUserId)}
-                            className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 active:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-                          >
-                            Mark done
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </td>
+                        <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
+                        <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
+                        <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
+                        <td className="px-4 py-4 text-slate-700">{collapseStatus(item.status)}</td>
+                        <td className="px-4 py-4 text-slate-700">
+                          {item.assignedUserId ? userNameById.get(item.assignedUserId) ?? item.assignedUserId : 'Unassigned'}
+                        </td>
+                        <td className="px-4 py-4 text-slate-700">
+                          <div className="flex flex-col gap-1">
+                            {!item.assignedUserId && currentUserId && (
+                              <button
+                                type="button"
+                                onClick={() => updatePolicy(item.id, item.status ?? 'Not Started', currentUserId)}
+                                className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                              >
+                                Assign to me
+                              </button>
+                            )}
+                            <select
+                              value={item.assignedUserId ?? ''}
+                              onChange={(event) => updatePolicy(item.id, item.status ?? 'Not Started', event.target.value || null)}
+                              className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                            >
+                              <option value="">Unassigned</option>
+                              {users.map((user) => (
+                                <option key={user.id} value={user.id}>{user.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr key={`${item.id}-expanded`}>
+                          <td colSpan={7} className="bg-slate-50 px-6 py-5">
+                            <h3 className="mb-3 text-sm font-semibold text-slate-900">Underwriter Workspace</h3>
+                            <UnderwriterWorkspace policyId={item.id} routing={item.routing} onUpdate={loadAll} />
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )
+                })}
                 {filteredNavins.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
                       No Navins Renew items match the current filters.
                     </td>
                   </tr>
@@ -585,7 +649,7 @@ export default function TeamViewPage() {
       </section>
 
       <SlideOutPanel open={reviewPolicyId !== null} onClose={() => setReviewPolicyId(null)}>
-        {reviewPolicyId && <ManualReviewWorkspace policyId={reviewPolicyId} onUpdate={loadAll} />}
+        {reviewPolicyId && <RiskQualityPanel policyId={reviewPolicyId} />}
       </SlideOutPanel>
     </div>
   )
