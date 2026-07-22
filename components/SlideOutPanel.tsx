@@ -3,10 +3,12 @@
 export default function SlideOutPanel({
   open,
   onClose,
+  title,
   children,
 }: {
   open: boolean
   onClose: () => void
+  title?: string
   children: React.ReactNode
 }) {
   if (!open) return null
@@ -15,7 +17,8 @@ export default function SlideOutPanel({
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} aria-hidden="true" />
       <div className="relative flex h-full w-full max-w-3xl flex-col bg-white shadow-2xl">
-        <div className="flex items-center justify-end border-b border-slate-200 p-3">
+        <div className={`flex items-center gap-2 border-b border-slate-200 p-3 ${title ? 'justify-between' : 'justify-end'}`}>
+          {title && <h2 className="pl-2 text-base font-semibold text-slate-900">{title}</h2>}
           <button
             type="button"
             onClick={onClose}

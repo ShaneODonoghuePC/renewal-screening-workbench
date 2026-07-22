@@ -490,17 +490,15 @@ export default function TeamViewPage() {
                   const isExpanded = expandedRows.has(item.id)
                   return (
                     <>
-                      <tr key={item.id} className="hover:bg-slate-50">
+                      <tr
+                        key={item.id}
+                        onClick={() => toggleExpanded(item.id)}
+                        aria-expanded={isExpanded}
+                        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} Underwriter Workspace for ${item.id}`}
+                        className="cursor-pointer hover:bg-slate-100"
+                      >
                         <td className="px-4 py-4">
-                          <button
-                            type="button"
-                            onClick={() => toggleExpanded(item.id)}
-                            aria-expanded={isExpanded}
-                            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} Underwriter Workspace for ${item.id}`}
-                            className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-                          >
-                            <ExpandCaret expanded={isExpanded} />
-                          </button>
+                          <ExpandCaret expanded={isExpanded} />
                         </td>
                         <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
                         <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
@@ -514,7 +512,10 @@ export default function TeamViewPage() {
                           <div className="flex flex-col gap-1">
                             <button
                               type="button"
-                              onClick={() => setReviewPolicyId(item.id)}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setReviewPolicyId(item.id)
+                              }}
                               className="rounded-lg border border-brand px-2 py-1 text-xs font-semibold text-brand hover:bg-brand/5 active:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                             >
                               Review
@@ -522,7 +523,10 @@ export default function TeamViewPage() {
                             {!item.assignedUserId && currentUserId && (
                               <button
                                 type="button"
-                                onClick={() => updatePolicy(item.id, item.status ?? 'Not Started', currentUserId)}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  updatePolicy(item.id, item.status ?? 'Not Started', currentUserId)
+                                }}
                                 className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                               >
                                 Assign to me
@@ -530,7 +534,11 @@ export default function TeamViewPage() {
                             )}
                             <select
                               value={item.assignedUserId ?? ''}
-                              onChange={(event) => updatePolicy(item.id, item.status ?? 'Not Started', event.target.value || null)}
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => {
+                                event.stopPropagation()
+                                updatePolicy(item.id, item.status ?? 'Not Started', event.target.value || null)
+                              }}
                               className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                             >
                               <option value="">Unassigned</option>
@@ -581,17 +589,15 @@ export default function TeamViewPage() {
                   const isExpanded = expandedRows.has(item.id)
                   return (
                     <>
-                      <tr key={item.id} className="hover:bg-slate-50">
+                      <tr
+                        key={item.id}
+                        onClick={() => toggleExpanded(item.id)}
+                        aria-expanded={isExpanded}
+                        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} Underwriter Workspace for ${item.id}`}
+                        className="cursor-pointer hover:bg-slate-100"
+                      >
                         <td className="px-4 py-4">
-                          <button
-                            type="button"
-                            onClick={() => toggleExpanded(item.id)}
-                            aria-expanded={isExpanded}
-                            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} Underwriter Workspace for ${item.id}`}
-                            className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-                          >
-                            <ExpandCaret expanded={isExpanded} />
-                          </button>
+                          <ExpandCaret expanded={isExpanded} />
                         </td>
                         <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
                         <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
@@ -605,7 +611,10 @@ export default function TeamViewPage() {
                             {!item.assignedUserId && currentUserId && (
                               <button
                                 type="button"
-                                onClick={() => updatePolicy(item.id, item.status ?? 'Not Started', currentUserId)}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  updatePolicy(item.id, item.status ?? 'Not Started', currentUserId)
+                                }}
                                 className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                               >
                                 Assign to me
@@ -613,7 +622,11 @@ export default function TeamViewPage() {
                             )}
                             <select
                               value={item.assignedUserId ?? ''}
-                              onChange={(event) => updatePolicy(item.id, item.status ?? 'Not Started', event.target.value || null)}
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => {
+                                event.stopPropagation()
+                                updatePolicy(item.id, item.status ?? 'Not Started', event.target.value || null)
+                              }}
                               className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                             >
                               <option value="">Unassigned</option>
@@ -648,7 +661,7 @@ export default function TeamViewPage() {
         )}
       </section>
 
-      <SlideOutPanel open={reviewPolicyId !== null} onClose={() => setReviewPolicyId(null)}>
+      <SlideOutPanel open={reviewPolicyId !== null} onClose={() => setReviewPolicyId(null)} title="Risk Quality & Recommendation">
         {reviewPolicyId && <RiskQualityPanel policyId={reviewPolicyId} />}
       </SlideOutPanel>
     </div>
