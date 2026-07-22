@@ -10,7 +10,7 @@ export default function ManualReviewDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to Team View</Link>
+      <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to Assignment & Management</Link>
       <ManualReviewWorkspace policyId={policyId} />
     </div>
   )

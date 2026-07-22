@@ -268,7 +268,7 @@ export default function TeamViewPage() {
     <div className="space-y-6">
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Team View</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Assignment & Management</h1>
           <p className="text-xs text-slate-500">
             Defaults to your own assigned items. Switch "Assigned to" below to see the whole team's.
           </p>

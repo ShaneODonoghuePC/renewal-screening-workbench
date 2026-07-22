@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Team View' },
+  { href: '/', label: 'Assignment & Management' },
   { href: '/review/auto-renew', label: 'Auto-Renew Log' },
-  { href: '/review/history', label: 'History' },
+  { href: '/review/history', label: 'Closed Items' },
 ]
 
 export default function HeaderNav() {

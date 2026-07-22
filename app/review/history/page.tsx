@@ -80,7 +80,7 @@ export default function HistoryPage() {
     <div className="space-y-6">
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">History</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Closed Items</h1>
           <p className="text-xs text-slate-500">
             Read-only audit trail of closed-out items. Not re-openable from here.
           </p>

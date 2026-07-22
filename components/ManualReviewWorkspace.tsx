@@ -396,10 +396,10 @@ export default function ManualReviewWorkspace({
         </div>
       </section>
 
-      {/* Risk Quality — Data Confidence and Operational/Company & Financial grades are
-          derived from real flag data; Historical and the figures below are still mocked. */}
+      {/* Risk Quality Panel -- Data Confidence and Operational/Company & Financial grades
+          are derived from real flag data; Historical and the figures below are still mocked. */}
       <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Risk Quality</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Risk Quality & Recommendation</h2>
 
         {!riskQuality.verified && (
           <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
