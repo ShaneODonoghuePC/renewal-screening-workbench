@@ -318,19 +318,15 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         </div>
       </section>
 
+      {/* Stage 1/2 flags, plus Flag Reasons as a closing line -- the only place the
+          four attention-only signals (Data Incomplete, D&B Predictor Concern, D&B
+          Significant Event, D&B Listed Status Unknown) are visible, since those don't
+          get their own Y/N row above. The rest of the old "Derived" section (Stage 1/2
+          counts, Routing, Attention) was redundant with the flags above, the Attention
+          badge in the header, and the fact this panel is only ever reached for Manual
+          Review policies -- removed rather than kept as dead weight. */}
       <section className="border-b border-slate-200 pb-6">
         <FlagDetailPanel item={policy} />
-      </section>
-
-      {/* Derived */}
-      <section className="border-b border-slate-200 pb-6">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Derived</h2>
-        <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-          <div><dt className="text-slate-500">Stage 1 Flags</dt><dd className="font-medium text-slate-900">{policy.stage1FlagCount}</dd></div>
-          <div><dt className="text-slate-500">Stage 2 Flags</dt><dd className="font-medium text-slate-900">{policy.stage2FlagCount}</dd></div>
-          <div><dt className="text-slate-500">Routing</dt><dd className="font-medium text-slate-900">{policy.routing || EMPTY_VALUE}</dd></div>
-          <div><dt className="text-slate-500">Attention</dt><dd className="font-medium text-slate-900">{policy.attention || EMPTY_VALUE}</dd></div>
-        </dl>
         <div className="mt-4">
           <dt className="text-sm text-slate-500">Flag Reasons</dt>
           <dd className="mt-1 text-sm font-medium text-slate-900">{policy.flagReasons || EMPTY_VALUE}</dd>
