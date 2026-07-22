@@ -83,7 +83,7 @@ function main() {
     ]
     inserts.push(`INSERT INTO policies VALUES (${vals.join(',')});`)
 
-    const defaultStatus = r.routing === 'Manual Review' ? 'New' : (r.routing === 'NAVINS Renew' ? 'Pending' : null)
+    const defaultStatus = r.routing === 'Manual Review' || r.routing === 'NAVINS Renew' ? 'Not Started' : null
     if (defaultStatus) {
       const assigned = assignedPolicyOwners.get(r.id) ?? null
       inserts.push(`INSERT INTO review_states(policyId,status,assignedUserId) VALUES (${esc(r.id)}, ${esc(defaultStatus)}, ${esc(assigned)});`)

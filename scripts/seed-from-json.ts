@@ -109,7 +109,7 @@ async function main() {
 
     stmts.push([sql, args])
 
-    const defaultStatus = p.routing === 'Manual Review' ? 'New' : (p.routing === 'NAVINS Renew' ? 'Pending' : null)
+    const defaultStatus = p.routing === 'Manual Review' || p.routing === 'NAVINS Renew' ? 'Not Started' : null
     if (defaultStatus) {
       const assigned = assignedPolicyOwners.get(p.id) ?? null
       stmts.push([
