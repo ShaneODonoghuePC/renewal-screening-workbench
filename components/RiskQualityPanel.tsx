@@ -42,6 +42,28 @@ function ragCardClasses(grade: Grade) {
   return 'border-green-200 bg-green-50 text-green-700'
 }
 
+// Worst-of-three across the graded dimensions (Company & Financial excluded from the
+// array entirely while Unverified, same as computeRecommendation) -- this is what colors
+// the whole Risk Quality section container, so one B among otherwise-A grades still
+// reads as amber at a glance, not just on that one card.
+function worstGrade(grades: Grade[]): Grade {
+  if (grades.includes('C')) return 'C'
+  if (grades.includes('B')) return 'B'
+  return 'A'
+}
+
+// Border/bg only (no text color) so this can wrap the whole section without overriding
+// the slate text colors already set on its children.
+function riskQualitySectionClasses(grade: Grade) {
+  if (grade === 'C') return 'border-red-300 bg-red-50'
+  if (grade === 'B') return 'border-amber-300 bg-amber-50'
+  return 'border-green-300 bg-green-50'
+}
+
+function verifiedPillClasses(verified: boolean) {
+  return verified ? 'border-green-300 bg-green-50 text-green-700' : 'border-amber-300 bg-amber-50 text-amber-700'
+}
+
 // Tiny inline trajectory display for the 3-cycle D&B score history — no charting
 // dependency needed for three points.
 function Sparkline({ values }: { values: [number, number, number] }) {
@@ -74,7 +96,7 @@ function GradeCard({
   history?: [number, number, number]
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="rounded-md border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
           {label}
@@ -128,6 +150,17 @@ function formatDate(renewalDate: string | null) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
+// Expiring/renewal years for the Renewal economics line -- there's no separate stored
+// "expiring premium year," so it's derived as the year before the renewal date's year,
+// same cycle-to-cycle relationship the expiring vs. renewal premium figures represent.
+function renewalYears(renewalDate: string | null): { expiringYear: string; renewalYear: string } {
+  if (!renewalDate) return { expiringYear: EMPTY_VALUE, renewalYear: EMPTY_VALUE }
+  const date = new Date(`${renewalDate}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return { expiringYear: EMPTY_VALUE, renewalYear: EMPTY_VALUE }
+  const renewalYear = date.getUTCFullYear()
+  return { expiringYear: String(renewalYear - 1), renewalYear: String(renewalYear) }
+}
+
 // Risk Quality Panel for a Manual Review policy: identity/context, Stage 1/2 flags,
 // derived fields, graded dimensions + computed recommendation, historical performance.
 // Read-only -- status/assignment/comments/activity live in the separate Underwriter
@@ -176,7 +209,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
   }, [loadPolicy])
 
   if (error) {
-    return <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
+    return <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
   }
 
   if (!policy) {
@@ -188,24 +221,48 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
   // lib/mockRiskQuality.ts for exactly which parts are real vs. still simulated).
   const riskQuality = getRiskQuality(policy)
   const recommendation = computeRecommendation(riskQuality)
+  const dnbVerified = !policy.dnbNoMatch
+  const sectionGradeInputs: Grade[] = [riskQuality.operational.grade, riskQuality.historical.grade]
+  if (riskQuality.companyFinancial) sectionGradeInputs.push(riskQuality.companyFinancial.grade)
+  const sectionGrade = worstGrade(sectionGradeInputs)
+  const { expiringYear, renewalYear } = renewalYears(policy.renewalDate)
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-slate-50 p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{policy.id}</h1>
             <p className="mt-1 text-sm text-slate-600">{policy.customerName}</p>
           </div>
           <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${verifiedPillClasses(dnbVerified)}`}>
+              {dnbVerified ? 'Data Verified (D&B match found)' : 'Data Not Verified (D&B No Match)'}
+            </span>
             <SeverityBadge attention={policy.attention} />
           </div>
         </div>
       </section>
 
+      {/* Identity & Context */}
+      <section className="border-b border-slate-200 pb-6">
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
+        <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+          <div><dt className="text-slate-500">Policy number</dt><dd className="font-medium text-slate-900">{policy.id}</dd></div>
+          <div><dt className="text-slate-500">Customer name</dt><dd className="font-medium text-slate-900">{policy.customerName}</dd></div>
+          <div><dt className="text-slate-500">Customer identifier</dt><dd className="font-medium text-slate-900">{policy.customerIdentifier}</dd></div>
+          <div><dt className="text-slate-500">Broker name</dt><dd className="font-medium text-slate-900">{policy.brokerName}</dd></div>
+          <div><dt className="text-slate-500">End date</dt><dd className="font-medium text-slate-900">{formatDate(policy.renewalDate)}</dd></div>
+          <div><dt className="text-slate-500">Currency</dt><dd className="font-medium text-slate-900">{policy.currency || EMPTY_VALUE}</dd></div>
+          <div><dt className="text-slate-500">Premium</dt><dd className="font-medium text-slate-900">{formatCurrency(policy.premium, policy.currency)}</dd></div>
+        </dl>
+      </section>
+
       {/* Risk Quality Panel -- Data Confidence and Operational/Company & Financial grades
-          are derived from real flag data; Historical and the figures below are still mocked. */}
-      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+          are derived from real flag data; Historical and the figures below are still mocked.
+          Section stays boxed (unlike the report-style sections around it) specifically so
+          the worst-of-three grade coloring below means something. */}
+      <section className={`rounded-lg border p-6 shadow-sm ${riskQualitySectionClasses(sectionGrade)}`}>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Risk Quality</h2>
 
         {!riskQuality.verified && (
@@ -242,45 +299,31 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-md border border-slate-200 bg-white p-4">
             <p className="text-xs font-medium text-slate-500">Renewal economics</p>
             <p className="mt-1 text-sm font-medium text-slate-900">
-              {formatCurrency(riskQuality.renewalEconomics.expiringPremium, policy.currency)}
+              {formatCurrency(riskQuality.renewalEconomics.expiringPremium, policy.currency)} ({expiringYear})
               {' → '}
-              {formatCurrency(riskQuality.renewalEconomics.renewalPremium, policy.currency)}{' '}
-              <span className={riskQuality.renewalEconomics.movementPercent >= 0 ? 'text-brand' : 'text-slate-600'}>
-                ({riskQuality.renewalEconomics.movementPercent >= 0 ? '+' : ''}
-                {riskQuality.renewalEconomics.movementPercent}%)
-              </span>
+              {formatCurrency(riskQuality.renewalEconomics.renewalPremium, policy.currency)} ({renewalYear})
+            </p>
+            <p className={`mt-1 text-xs font-medium ${riskQuality.renewalEconomics.movementPercent >= 0 ? 'text-brand' : 'text-slate-600'}`}>
+              {riskQuality.renewalEconomics.movementPercent >= 0 ? '+' : ''}
+              {riskQuality.renewalEconomics.movementPercent}% change
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-md border border-slate-200 bg-white p-4">
             <p className="text-xs font-medium text-slate-500">Computed recommendation</p>
             <p className="mt-1 text-sm font-medium text-slate-900">{recommendation.text}</p>
           </div>
         </div>
       </section>
 
-      {/* Identity & Context */}
-      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
-        <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
-          <div><dt className="text-slate-500">Policy number</dt><dd className="font-medium text-slate-900">{policy.id}</dd></div>
-          <div><dt className="text-slate-500">Customer name</dt><dd className="font-medium text-slate-900">{policy.customerName}</dd></div>
-          <div><dt className="text-slate-500">Customer identifier</dt><dd className="font-medium text-slate-900">{policy.customerIdentifier}</dd></div>
-          <div><dt className="text-slate-500">Broker name</dt><dd className="font-medium text-slate-900">{policy.brokerName}</dd></div>
-          <div><dt className="text-slate-500">End date</dt><dd className="font-medium text-slate-900">{formatDate(policy.renewalDate)}</dd></div>
-          <div><dt className="text-slate-500">Currency</dt><dd className="font-medium text-slate-900">{policy.currency || EMPTY_VALUE}</dd></div>
-          <div><dt className="text-slate-500">Premium</dt><dd className="font-medium text-slate-900">{formatCurrency(policy.premium, policy.currency)}</dd></div>
-        </dl>
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="border-b border-slate-200 pb-6">
         <FlagDetailPanel item={policy} />
       </section>
 
       {/* Derived */}
-      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="border-b border-slate-200 pb-6">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Derived</h2>
         <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div><dt className="text-slate-500">Stage 1 Flags</dt><dd className="font-medium text-slate-900">{policy.stage1FlagCount}</dd></div>
@@ -295,36 +338,36 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
       </section>
 
       {/* Historical Performance — mocked, does not affect grade */}
-      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Historical Performance</h2>
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <div
-            className={`flex h-full min-w-0 flex-col justify-between rounded-xl border p-4 ${ragCardClasses(
+            className={`flex h-full min-w-0 flex-col justify-between rounded-md border p-4 ${ragCardClasses(
               computeHistoricalGrade(riskQuality.historicalPerformance.lossRatio)
             )}`}
           >
             <p className="text-xs font-medium opacity-75">Loss ratio</p>
             <p className="whitespace-nowrap text-xl font-semibold">{Math.round(riskQuality.historicalPerformance.lossRatio * 100)}%</p>
           </div>
-          <div className="flex h-full min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex h-full min-w-0 flex-col justify-between rounded-md border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Claims paid</p>
             <p className="whitespace-nowrap text-lg font-semibold text-slate-900" title={formatCurrency(riskQuality.historicalPerformance.claimsPaid, policy.currency)}>
               {formatCompactCurrency(riskQuality.historicalPerformance.claimsPaid, policy.currency)}
             </p>
           </div>
-          <div className="flex h-full min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex h-full min-w-0 flex-col justify-between rounded-md border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Cumulative premium</p>
             <p className="whitespace-nowrap text-lg font-semibold text-slate-900" title={formatCurrency(riskQuality.historicalPerformance.cumulativePremium, policy.currency)}>
               {formatCompactCurrency(riskQuality.historicalPerformance.cumulativePremium, policy.currency)}
             </p>
           </div>
-          <div className="flex h-full min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex h-full min-w-0 flex-col justify-between rounded-md border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Claim frequency</p>
             <p className="whitespace-nowrap text-xl font-semibold text-slate-900">
               {riskQuality.historicalPerformance.claimFrequency.toFixed(1)}/yr
             </p>
           </div>
-          <div className="flex h-full min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex h-full min-w-0 flex-col justify-between rounded-md border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500">Tenure</p>
             <p className="whitespace-nowrap text-xl font-semibold text-slate-900">{riskQuality.historicalPerformance.tenureYears} yrs</p>
           </div>

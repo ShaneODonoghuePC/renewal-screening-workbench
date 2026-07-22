@@ -78,7 +78,7 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Closed Items</h1>
           <p className="text-xs text-slate-500">
@@ -88,10 +88,10 @@ export default function HistoryPage() {
       </section>
 
       {error && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
       )}
 
-      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="rounded-lg border border-slate-200 p-6 shadow-sm">
         <div className="mb-4 flex gap-2">
           <button
             type="button"
@@ -118,7 +118,7 @@ export default function HistoryPage() {
           {loading && <p className="self-center text-sm text-slate-500">Loading…</p>}
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
               <tr>

@@ -110,8 +110,8 @@ export default function AutoRenewLogPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Auto-Renew (RPUX) Log</h1>
+      <section className="rounded-lg border border-slate-200 bg-slate-50 p-6 shadow-sm">
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Auto-Renew (RPUX) Log</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
           Read-only record of clean policies RPUX auto-renewed. Every check still ran, expand a row to see what was
           confirmed clean, not just that nothing fired.
@@ -119,12 +119,12 @@ export default function AutoRenewLogPage() {
       </section>
 
       {error && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
       )}
 
       {tabs.length > 0 && <MonthTabBar tabs={tabs} selected={selectedMonth} onSelect={handleSelectMonth} />}
 
-      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="rounded-lg border border-slate-200 p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-4">
           <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
             Search customer
@@ -138,7 +138,7 @@ export default function AutoRenewLogPage() {
           {loading && <p className="text-sm text-slate-500">Loading…</p>}
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-slate-500">
               <tr>

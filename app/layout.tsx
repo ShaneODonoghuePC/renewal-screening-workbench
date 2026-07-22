@@ -1,7 +1,6 @@
 import { Inter } from 'next/font/google'
 import './globals.css'
 import ActingAsPicker from '@/components/ActingAsPicker'
-import BrandingStrip from '@/components/BrandingStrip'
 import HeaderNav from '@/components/HeaderNav'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
@@ -22,11 +21,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ActingAsPicker />
           </div>
         </header>
-        <main className="p-4 pr-[6.25rem]">{children}</main>
+        <main className="p-4">{children}</main>
         <footer className="border-t border-slate-200 px-4 py-2.5 text-center text-xs text-slate-500">
           This is a demo application. Data and figures are illustrative.
         </footer>
-        <BrandingStrip />
       </body>
     </html>
   )

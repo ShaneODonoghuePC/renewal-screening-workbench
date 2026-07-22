@@ -12,7 +12,7 @@ export default function ManualReviewDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to Assignment & Management</Link>
-        <h2 className="text-base font-semibold text-slate-900">Risk Quality & Recommendation</h2>
+        <h2 className="text-xl font-semibold tracking-tight text-slate-900">Risk Quality & Recommendation</h2>
       </div>
       <RiskQualityPanel policyId={policyId} />
     </div>

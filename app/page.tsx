@@ -289,7 +289,7 @@ export default function TeamViewPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Assignment & Management</h1>
           <p className="text-xs text-slate-500">
@@ -299,34 +299,34 @@ export default function TeamViewPage() {
       </section>
 
       {error && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
       )}
 
       {/* Summary strip: month-scoped overview, independent of the filters below */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Total renewals</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.totalRenewals}</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Auto-renew</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.autoRenewCount}</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Navins Renew</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.navinsCount}</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Manual Review</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.manualReviewCount}</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Total flags raised</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.totalFlagsRaised}</p>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="rounded-lg border border-slate-200 p-6 shadow-sm">
         {/* Hierarchy: Manual Review/Navins Renew tabs -> filters (incl. month) -> table */}
         <div className="mb-4 flex gap-2">
           <button
@@ -471,7 +471,7 @@ export default function TeamViewPage() {
         </div>
 
         {section === 'manual' ? (
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-slate-500">
                 <tr>
@@ -571,7 +571,7 @@ export default function TeamViewPage() {
             </table>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50 text-slate-500">
                 <tr>

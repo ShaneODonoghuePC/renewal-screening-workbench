@@ -183,7 +183,7 @@ export default function UnderwriterWorkspace({
   const statusOptions = statusState ? [statusState.status, ...(transitions[statusState.status] ?? [])] : []
 
   if (error) {
-    return <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{error}</div>
+    return <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{error}</div>
   }
 
   if (!statusState) {
@@ -237,7 +237,7 @@ export default function UnderwriterWorkspace({
       <div className="grid gap-6 md:grid-cols-2">
         <div>
           <h3 className="mb-2 text-sm font-semibold text-slate-900">Comments</h3>
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="space-y-3 rounded-md border border-slate-200 bg-white p-4">
             {comments.length === 0 && <p className="text-sm text-slate-500">No comments yet.</p>}
             {comments.map((comment) => (
               <div key={comment.id} className="rounded-lg bg-slate-50 p-3 text-sm shadow-sm">
@@ -270,7 +270,7 @@ export default function UnderwriterWorkspace({
 
         <div>
           <h3 className="mb-2 text-sm font-semibold text-slate-900">Activity log</h3>
-          <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="space-y-2 rounded-md border border-slate-200 bg-white p-4">
             {activity.length === 0 && <p className="text-sm text-slate-500">No activity yet.</p>}
             {activity.map((entry) => (
               <div key={entry.id} className="rounded-lg bg-slate-50 p-3 text-sm shadow-sm">
