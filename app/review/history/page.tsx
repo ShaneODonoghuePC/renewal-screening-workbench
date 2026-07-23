@@ -78,14 +78,7 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-slate-900">Closed Items</h1>
-          <p className="text-xs text-slate-500">
-            Read-only audit trail of closed-out items. Not re-openable from here.
-          </p>
-        </div>
-      </section>
+      <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-slate-900">Closed Items</h1>
 
       {error && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>

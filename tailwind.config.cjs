@@ -7,9 +7,11 @@ module.exports = {
           DEFAULT: '#122933',
           dark: '#1c3a49',
         },
-        // rpgroup.com's actual warm putty/cream section background (sampled from
-        // rgb(217, 219, 203) on rpgroup.com/our-company/'s "Our History" section).
-        putty: '#d9dbcb',
+        // Lightened further toward white from the raw rpgroup.com sample
+        // (rgb(217, 219, 203)) -- on the real site that tone only ever fills a
+        // contained accent block against white, never the whole page, so a ~45%
+        // mix toward white here keeps it a soft tint rather than a solid wash.
+        putty: '#eceee5',
         // rpgroup.com's sage/olive accent (sampled from the rgba(161, 166, 124, 0.3)
         // image-overlay tint used across rpgroup.com) -- reserved for small-footprint
         // accents (a card tint, a divider), never a full-page background.

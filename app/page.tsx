@@ -310,11 +310,7 @@ export default function TeamViewPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-slate-900">Assignment & Management</h1>
-        </div>
-      </section>
+      <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-slate-900">Assignment & Management</h1>
 
       {/* Month picker: the first thing to interact with, since the time period being
           viewed should be obvious at a glance -- pulled out of the filter bar below and
