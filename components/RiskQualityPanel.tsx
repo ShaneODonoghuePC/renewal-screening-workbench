@@ -36,10 +36,12 @@ function momentumSymbol(momentum: Momentum) {
 }
 
 // Same RAG bands as the grade badges, softer card treatment (border/bg-50/text-700).
+// Grade A uses the sage accent rather than green here -- the grade-A badge circle
+// itself stays green-600 for RAG legibility, this is just the card's tint.
 function ragCardClasses(grade: Grade) {
   if (grade === 'C') return 'border-red-200 bg-red-50 text-red-700'
   if (grade === 'B') return 'border-amber-200 bg-amber-50 text-amber-700'
-  return 'border-green-200 bg-green-50 text-green-700'
+  return 'border-sage-300 bg-sage-100 text-sage-800'
 }
 
 // Worst-of-three across the graded dimensions (Company & Financial excluded from the
@@ -53,11 +55,13 @@ function worstGrade(grades: Grade[]): Grade {
 }
 
 // Border/bg only (no text color) so this can wrap the whole section without overriding
-// the slate text colors already set on its children.
+// the slate text colors already set on its children. Grade A -- the best-grade case --
+// gets the sage accent tint per the brand's small-footprint-accent rule; the grade
+// badges inside stay green-600 regardless, so they read clearly against the sage bg.
 function riskQualitySectionClasses(grade: Grade) {
   if (grade === 'C') return 'border-red-300 bg-red-50'
   if (grade === 'B') return 'border-amber-300 bg-amber-50'
-  return 'border-green-300 bg-green-50'
+  return 'border-sage-300 bg-sage-50'
 }
 
 function verifiedPillClasses(verified: boolean) {

@@ -312,7 +312,7 @@ export default function TeamViewPage() {
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Assignment & Management</h1>
+          <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-slate-900">Assignment & Management</h1>
         </div>
       </section>
 

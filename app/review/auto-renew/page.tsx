@@ -111,7 +111,7 @@ export default function AutoRenewLogPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-slate-200 bg-slate-50 p-6 shadow-sm">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Auto-Renew (RPUX) Log</h1>
+        <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-slate-900">Auto-Renew (RPUX) Log</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
           Read-only record of clean policies RPUX auto-renewed. Every check still ran, expand a row to see what was
           confirmed clean, not just that nothing fired.
