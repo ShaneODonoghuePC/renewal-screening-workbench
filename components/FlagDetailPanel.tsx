@@ -1,4 +1,4 @@
-import FlagRow, { yn } from './FlagRow'
+import FlagRow from './FlagRow'
 import { formatCurrency } from '@/lib/format'
 
 export type FlagEvidence = {
@@ -41,11 +41,8 @@ export default function FlagDetailPanel({
           <FlagRow label="Premium Unpaid" fired={item.premiumUnpaid} />
           <FlagRow label="Renewal Type Manual" fired={item.renewalTypeManual} />
           <FlagRow label="System Listed Company" fired={item.systemListedCompany} />
+          <FlagRow label="Is Frame" fired={item.isFrame} />
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          Is Frame (informational only, not a flag):{' '}
-          <span className="font-medium text-slate-700">{yn(item.isFrame)}</span>
-        </p>
       </div>
       <div>
         <h3 className="mb-2 text-sm font-semibold text-slate-900">{stage2Heading}</h3>
