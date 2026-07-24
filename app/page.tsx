@@ -162,8 +162,13 @@ function MultiSelectDropdown<T extends string>({
     onChange(cleaned.size > 0 ? cleaned : new Set([allValue]))
   }
 
+  // When the selection means "no filtering applied," the control shows the literal
+  // word "All" -- same visual language as the plain <select> filters (Attention/
+  // Assigned to/Broker), which show "All" rather than their own field name in the
+  // same situation. The bare label is only for the (allValue-less) empty-selection
+  // case, e.g. Flag type with nothing checked.
   const isAllSelected = allValue != null && selected.size === 1 && selected.has(allValue)
-  const buttonLabel = isAllSelected || selected.size === 0 ? label : `${label} (${selected.size})`
+  const buttonLabel = isAllSelected ? 'All' : selected.size === 0 ? label : `${label} (${selected.size})`
 
   return (
     <div className="relative flex flex-col gap-1 text-xs font-medium text-slate-600" ref={ref}>
