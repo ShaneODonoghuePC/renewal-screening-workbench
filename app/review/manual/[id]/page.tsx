@@ -12,7 +12,7 @@ export default function ManualReviewDetailPage() {
     <div className="space-y-6">
       {/* No page-level title here -- RiskQualityPanel renders its own "Risk Assessment"
           header (title + rating-explanation subtext inline together). */}
-      <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to Assignment & Management</Link>
+      <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to Renewal Management</Link>
       <RiskQualityPanel policyId={policyId} />
     </div>
   )

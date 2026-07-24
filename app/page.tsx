@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { deriveRenewalMonth } from '@/lib/renewalMonth'
 import { buildMonthTabs } from '@/lib/monthTabs'
@@ -12,8 +12,9 @@ import RiskQualityPanel from '@/components/RiskQualityPanel'
 import UnderwriterWorkspace from '@/components/UnderwriterWorkspace'
 import ExpandCaret from '@/components/ExpandCaret'
 import StatTile from '@/components/StatTile'
+import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel'
 
-type TeamItem = {
+type TeamItem = FlagEvidence & {
   id: string
   customerName: string
   brokerName: string | null
@@ -28,12 +29,31 @@ type TeamItem = {
 
 type Identity = { id: string; name: string; country: string }
 
+// The three routings the unified list mixes together, and how each displays in the
+// new Routing column / Routing filter -- internal values match policies.routing
+// exactly (as stored/queried), display labels match existing UI conventions elsewhere.
+const ROUTING_OPTIONS = ['Manual Review', 'NAVINS Renew', 'RPUX Auto Renew'] as const
+type Routing = (typeof ROUTING_OPTIONS)[number]
+const ROUTING_LABELS: Record<Routing, string> = {
+  'Manual Review': 'Manual Review',
+  'NAVINS Renew': 'Navins Renew',
+  'RPUX Auto Renew': 'RPUX Auto-Renew',
+}
+
+// The extended Status filter's three buckets, replacing the old per-routing literal-
+// status dropdown (Not Started/In Review/With Broker vs. Not Started/Quote Sent/Policy
+// Sent) -- those differ by routing, so once rows of different routings are mixed in one
+// table, a routing-agnostic bucket is the only filter that still makes sense. Same
+// grouping the table's Status cell already displayed via the old collapseStatus().
+const STATUS_BUCKETS = ['not-started', 'started', 'closed'] as const
+type StatusBucket = (typeof STATUS_BUCKETS)[number]
+const STATUS_BUCKET_LABELS: Record<StatusBucket, string> = {
+  'not-started': 'Not Started',
+  started: 'Started',
+  closed: 'Closed',
+}
+
 const ATTENTION_OPTIONS = ['High', 'Medium', 'None']
-// Terminal statuses (Renewed/Not Renewed/Quote Declined) never appear here -- they move
-// to Closed Items instead -- so they aren't offered as filter options; they'd always
-// return nothing.
-const MANUAL_REVIEW_STATUSES = ['Not Started', 'In Review', 'With Broker']
-const NAVINS_STATUSES = ['Not Started', 'Quote Sent', 'Policy Sent']
 
 function formatDate(renewalDate: string | null) {
   if (!renewalDate) return EMPTY_VALUE
@@ -53,14 +73,92 @@ function flagList(flagReasons: string | null) {
   return flagReasons.split(',').map((s) => s.trim()).filter(Boolean)
 }
 
-// Table-level display only (Phase 2A): the real, specific state (In Review/With Broker/
-// Quote Sent/Policy Sent) is visible once a row is expanded, inside the Underwriter
-// Workspace status control -- the collapsed table just shows whether work has begun.
-function collapseStatus(status: string | null) {
-  if (!status) return EMPTY_VALUE
-  return status === 'Not Started' ? 'Not Started' : 'Started'
+// RPUX Auto Renew has no review_states row at all, so Status filtering genuinely
+// doesn't apply to it -- callers check `item.routing === 'RPUX Auto Renew'` separately
+// rather than relying on this returning null for that case.
+function getStatusBucket(item: TeamItem): StatusBucket {
+  if (isTerminalStatus(item.routing, item.status)) return 'closed'
+  if (!item.status || item.status === 'Not Started') return 'not-started'
+  return 'started'
 }
 
+type RowKind = 'auto-renew' | 'closed' | 'workspace'
+
+function getRowKind(item: TeamItem): RowKind {
+  if (item.routing === 'RPUX Auto Renew') return 'auto-renew'
+  if (getStatusBucket(item) === 'closed') return 'closed'
+  return 'workspace'
+}
+
+// Same checkbox-dropdown idiom for Routing, Status, and Flag type -- one implementation
+// instead of three near-identical copies (each previously would have needed its own
+// open state, outside-click handling, and checkbox list markup).
+function MultiSelectDropdown<T extends string>({
+  label,
+  options,
+  optionLabel,
+  selected,
+  onChange,
+}: {
+  label: string
+  options: readonly T[]
+  optionLabel?: (option: T) => string
+  selected: Set<T>
+  onChange: (next: Set<T>) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClick = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  const toggle = (option: T) => {
+    const next = new Set(selected)
+    if (next.has(option)) next.delete(option)
+    else next.add(option)
+    onChange(next)
+  }
+
+  return (
+    <div className="relative flex flex-col gap-1 text-xs font-medium text-slate-600" ref={ref}>
+      <span>{label}</span>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+      >
+        <span>{selected.size > 0 ? `${label} (${selected.size})` : label}</span>
+        <span className="text-slate-400" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-20 mt-1 max-h-56 w-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+          {options.map((option) => (
+            <label key={option} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+              <input
+                type="checkbox"
+                checked={selected.has(option)}
+                onChange={() => toggle(option)}
+                className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-slate-300"
+              />
+              {optionLabel ? optionLabel(option) : option}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Renewal Management: Manual Review, Navins Renew, RPUX Auto-Renew, and Closed Items
+// consolidated into one filterable list (Routing + Status do the work the four old
+// separate pages used to do), replacing what used to be Assignment & Management plus
+// the standalone Auto-Renew Log and Closed Items pages.
 export default function TeamViewPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -72,9 +170,12 @@ export default function TeamViewPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [section, setSection] = useState<'manual' | 'navins'>('manual')
+  // Defaults reproduce exactly what the old Assignment & Management page showed:
+  // Manual Review + Navins Renew, Started + Not Started (i.e. RPUX Auto-Renew and
+  // Closed both start unchecked).
+  const [routingFilter, setRoutingFilter] = useState<Set<Routing>>(new Set(['Manual Review', 'NAVINS Renew']))
+  const [statusFilter, setStatusFilter] = useState<Set<StatusBucket>>(new Set(['not-started', 'started']))
   const [attentionFilter, setAttentionFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
   const [assignedFilter, setAssignedFilter] = useState('')
   const [brokerFilter, setBrokerFilter] = useState('')
   const [flagFilter, setFlagFilter] = useState<string[]>([])
@@ -85,8 +186,6 @@ export default function TeamViewPage() {
   const [defaultFilterApplied, setDefaultFilterApplied] = useState(false)
   const [reviewPolicyId, setReviewPolicyId] = useState<string | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [flagDropdownOpen, setFlagDropdownOpen] = useState(false)
-  const flagDropdownRef = useRef<HTMLDivElement>(null)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -135,31 +234,23 @@ export default function TeamViewPage() {
     }
   }, [currentUserId, defaultFilterApplied])
 
-  // Close the Flag type dropdown on outside click.
-  useEffect(() => {
-    if (!flagDropdownOpen) return
-    const handleClick = (event: MouseEvent) => {
-      if (flagDropdownRef.current && !flagDropdownRef.current.contains(event.target as Node)) {
-        setFlagDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [flagDropdownOpen])
-
-  // Tabs are scoped to Manual Review + Navins Renew only (what the tables below actually
-  // show) — Auto Renew rows are in `items` purely for the summary strip's auto-renew
-  // count and shouldn't shift month labels/counts.
-  const teamOnlyItems = useMemo(() => items.filter((item) => item.routing !== 'RPUX Auto Renew'), [items])
-  const { tabs } = useMemo(() => buildMonthTabs(teamOnlyItems), [teamOnlyItems])
-
-  // Assignment & Management defaults to "All" rather than buildMonthTabs's own
-  // soonest-outstanding-month default (which Auto-Renew Log still uses) — overridden
-  // here at the call site rather than in the shared helper, since the two pages want
-  // different defaults.
   const pageDefaultMonth = 'all'
-
   const monthParam = searchParams.get('month')
+
+  // Structural filters (Routing + Status) applied first -- these are what the month
+  // tabs and the table both key off. RPUX Auto-Renew ignores the Status filter
+  // entirely and shows whenever its Routing checkbox is on, per spec.
+  const structurallyFilteredItems = useMemo(
+    () =>
+      items.filter((item) => {
+        if (!routingFilter.has(item.routing as Routing)) return false
+        if (item.routing === 'RPUX Auto Renew') return true
+        return statusFilter.has(getStatusBucket(item))
+      }),
+    [items, routingFilter, statusFilter]
+  )
+
+  const { tabs } = useMemo(() => buildMonthTabs(structurallyFilteredItems), [structurallyFilteredItems])
   const selectedMonth = monthParam && tabs.some((tab) => tab.value === monthParam) ? monthParam : pageDefaultMonth
 
   // Reflect the resolved default in the URL once data is loaded, without adding a history entry.
@@ -174,6 +265,20 @@ export default function TeamViewPage() {
   }
 
   const monthFilteredItems = useMemo(() => {
+    if (selectedMonth === 'all') return structurallyFilteredItems
+    return structurallyFilteredItems.filter((item) => {
+      const derived = deriveRenewalMonth(item.renewalDate)
+      if (!derived) return false
+      const key = `${derived.year}-${String(derived.month).padStart(2, '0')}`
+      return key === selectedMonth
+    })
+  }, [structurallyFilteredItems, selectedMonth])
+
+  // Summary strip: month-scoped only, independent of every filter below (Routing and
+  // Status included) -- an at-a-glance overview of the whole month's caseload that
+  // never shifts as filters are toggled, computed the same way it always was so the
+  // numbers here can't regress from what Assignment & Management used to show.
+  const summaryMonthItems = useMemo(() => {
     if (selectedMonth === 'all') return items
     return items.filter((item) => {
       const derived = deriveRenewalMonth(item.renewalDate)
@@ -183,55 +288,36 @@ export default function TeamViewPage() {
     })
   }, [items, selectedMonth])
 
-  // Terminal items (Renewed/Not Renewed for Manual Review; Quote Declined/Renewed/Not
-  // Renewed for Navins Renew) are filtered out here — a display change only: the
-  // underlying data/status is untouched, they just move to Closed Items instead of
-  // staying visible in the working queues.
-  const manualReviewItems = useMemo(
-    () => monthFilteredItems.filter((item) => item.routing === 'Manual Review' && !isTerminalStatus(item.routing, item.status)),
-    [monthFilteredItems]
-  )
-  const navinsItems = useMemo(
-    () => monthFilteredItems.filter((item) => item.routing === 'NAVINS Renew' && !isTerminalStatus(item.routing, item.status)),
-    [monthFilteredItems]
-  )
-  const autoRenewItems = useMemo(
-    () => monthFilteredItems.filter((item) => item.routing === 'RPUX Auto Renew'),
-    [monthFilteredItems]
-  )
-
-  // Summary strip counts — scoped to the selected month only, independent of the
-  // Attention/Status/Assigned-to filters below (an at-a-glance overview of the whole
-  // month's caseload, not whichever narrow slice happens to be currently filtered).
-  // Counts reflect the same open-items filtering as the tables (terminal items excluded)
-  // so the tiles and tables never disagree with each other.
   const summary = useMemo(() => {
-    const totalFlagsRaised = manualReviewItems.reduce((sum, item) => sum + flagList(item.flagReasons).length, 0)
+    const manual = summaryMonthItems.filter((item) => item.routing === 'Manual Review' && !isTerminalStatus(item.routing, item.status))
+    const navins = summaryMonthItems.filter((item) => item.routing === 'NAVINS Renew' && !isTerminalStatus(item.routing, item.status))
+    const autoRenew = summaryMonthItems.filter((item) => item.routing === 'RPUX Auto Renew')
+    const totalFlagsRaised = manual.reduce((sum, item) => sum + flagList(item.flagReasons).length, 0)
     return {
-      totalRenewals: manualReviewItems.length + navinsItems.length + autoRenewItems.length,
-      autoRenewCount: autoRenewItems.length,
-      navinsCount: navinsItems.length,
-      manualReviewCount: manualReviewItems.length,
+      totalRenewals: manual.length + navins.length + autoRenew.length,
+      autoRenewCount: autoRenew.length,
+      navinsCount: navins.length,
+      manualReviewCount: manual.length,
       totalFlagsRaised,
     }
-  }, [autoRenewItems, navinsItems, manualReviewItems])
+  }, [summaryMonthItems])
 
+  // Available flags/brokers scoped to the structurally-filtered, month-filtered set --
+  // same "pre-refinement-filter" scoping the old page used, just no longer limited to
+  // the Manual Review tab now that flags/brokers can come from any visible routing.
   const availableFlags = useMemo(() => {
     const set = new Set<string>()
-    manualReviewItems.forEach((item) => flagList(item.flagReasons).forEach((flag) => set.add(flag)))
+    monthFilteredItems.forEach((item) => flagList(item.flagReasons).forEach((flag) => set.add(flag)))
     return [...set].sort()
-  }, [manualReviewItems])
+  }, [monthFilteredItems])
 
-  // Broker options scoped to whichever table is currently active, same as Flag type's
-  // availableFlags -- populated from the month-filtered, pre-other-filter item list.
   const availableBrokers = useMemo(() => {
-    const sourceItems = section === 'manual' ? manualReviewItems : navinsItems
     const set = new Set<string>()
-    sourceItems.forEach((item) => {
+    monthFilteredItems.forEach((item) => {
       if (item.brokerName) set.add(item.brokerName)
     })
     return [...set].sort()
-  }, [section, manualReviewItems, navinsItems])
+  }, [monthFilteredItems])
 
   const sortItems = useCallback(
     (list: TeamItem[]) => {
@@ -251,10 +337,9 @@ export default function TeamViewPage() {
     [sortField, sortDir]
   )
 
-  const filteredManualReview = useMemo(() => {
-    let result = manualReviewItems
+  const filteredItems = useMemo(() => {
+    let result = monthFilteredItems
     if (attentionFilter) result = result.filter((item) => (item.attention || 'None') === attentionFilter)
-    if (statusFilter) result = result.filter((item) => item.status === statusFilter)
     if (assignedFilter === 'unassigned') result = result.filter((item) => !item.assignedUserId)
     else if (assignedFilter) result = result.filter((item) => item.assignedUserId === assignedFilter)
     if (brokerFilter) result = result.filter((item) => item.brokerName === brokerFilter)
@@ -265,16 +350,7 @@ export default function TeamViewPage() {
       })
     }
     return sortItems(result)
-  }, [manualReviewItems, attentionFilter, statusFilter, assignedFilter, brokerFilter, flagFilter, sortItems])
-
-  const filteredNavins = useMemo(() => {
-    let result = navinsItems
-    if (statusFilter) result = result.filter((item) => item.status === statusFilter)
-    if (assignedFilter === 'unassigned') result = result.filter((item) => !item.assignedUserId)
-    else if (assignedFilter) result = result.filter((item) => item.assignedUserId === assignedFilter)
-    if (brokerFilter) result = result.filter((item) => item.brokerName === brokerFilter)
-    return sortItems(result)
-  }, [navinsItems, statusFilter, assignedFilter, brokerFilter, sortItems])
+  }, [monthFilteredItems, attentionFilter, assignedFilter, brokerFilter, flagFilter, sortItems])
 
   const userNameById = useMemo(() => {
     const map = new Map<string, string>()
@@ -307,15 +383,13 @@ export default function TeamViewPage() {
     })
   }
 
-  const statusOptions = section === 'manual' ? MANUAL_REVIEW_STATUSES : NAVINS_STATUSES
-
   return (
     <div className="space-y-6">
-      <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-slate-900">Assignment & Management</h1>
+      {/* No H1 here -- the "Renewal Management" nav link is the only destination now,
+          so it alone identifies the page. */}
 
       {/* Month picker: the first thing to interact with, since the time period being
-          viewed should be obvious at a glance -- pulled out of the filter bar below and
-          defaulted to "All" (a page-level override; see pageDefaultMonth above). */}
+          viewed should be obvious at a glance. */}
       <section className="flex items-center gap-3">
         <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
           Month
@@ -345,58 +419,32 @@ export default function TeamViewPage() {
       </section>
 
       <section className="rounded-lg border border-slate-200 p-6 shadow-sm">
-        {/* Hierarchy: Manual Review/Navins Renew tabs -> filters (incl. month) -> table */}
-        <div className="mb-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setSection('manual')}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
-              section === 'manual'
-                ? 'bg-brand text-white active:bg-brand-dark'
-                : 'bg-white text-slate-700 border border-slate-200 active:bg-slate-100'
-            }`}
-          >
-            Manual Review ({manualReviewItems.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSection('navins')}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
-              section === 'navins'
-                ? 'bg-brand text-white active:bg-brand-dark'
-                : 'bg-white text-slate-700 border border-slate-200 active:bg-slate-100'
-            }`}
-          >
-            Navins Renew ({navinsItems.length})
-          </button>
-        </div>
-
         <div className="mb-4 flex flex-wrap items-end gap-4">
-          {section === 'manual' && (
-            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-              Attention
-              <select
-                value={attentionFilter}
-                onChange={(event) => setAttentionFilter(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-              >
-                <option value="">All</option>
-                {ATTENTION_OPTIONS.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </label>
-          )}
+          <MultiSelectDropdown
+            label="Routing"
+            options={ROUTING_OPTIONS}
+            optionLabel={(r) => ROUTING_LABELS[r]}
+            selected={routingFilter}
+            onChange={(next) => setRoutingFilter(next)}
+          />
+
+          <MultiSelectDropdown
+            label="Status"
+            options={STATUS_BUCKETS}
+            optionLabel={(s) => STATUS_BUCKET_LABELS[s]}
+            selected={statusFilter}
+            onChange={(next) => setStatusFilter(next)}
+          />
 
           <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-            Status
+            Attention
             <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              value={attentionFilter}
+              onChange={(event) => setAttentionFilter(event.target.value)}
               className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             >
               <option value="">All</option>
-              {statusOptions.map((option) => (
+              {ATTENTION_OPTIONS.map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
@@ -431,38 +479,13 @@ export default function TeamViewPage() {
             </select>
           </label>
 
-          {section === 'manual' && availableFlags.length > 0 && (
-            <div className="relative flex flex-col gap-1 text-xs font-medium text-slate-600" ref={flagDropdownRef}>
-              <span>Flag type</span>
-              <button
-                type="button"
-                onClick={() => setFlagDropdownOpen((open) => !open)}
-                className="flex items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-              >
-                <span>{flagFilter.length > 0 ? `Flag type (${flagFilter.length})` : 'Flag type'}</span>
-                <span className="text-slate-400" aria-hidden="true">▾</span>
-              </button>
-              {flagDropdownOpen && (
-                <div className="absolute left-0 top-full z-20 mt-1 max-h-56 w-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
-                  {availableFlags.map((flag) => (
-                    <label
-                      key={flag}
-                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={flagFilter.includes(flag)}
-                        onChange={() =>
-                          setFlagFilter((prev) => (prev.includes(flag) ? prev.filter((f) => f !== flag) : [...prev, flag]))
-                        }
-                        className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-slate-300"
-                      />
-                      {flag}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+          {availableFlags.length > 0 && (
+            <MultiSelectDropdown
+              label="Flag type"
+              options={availableFlags}
+              selected={new Set(flagFilter)}
+              onChange={(next) => setFlagFilter([...next])}
+            />
           )}
 
           <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
@@ -489,58 +512,63 @@ export default function TeamViewPage() {
           {loading && <p className="text-sm text-slate-500">Loading…</p>}
         </div>
 
-        {section === 'manual' ? (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-              <thead className="bg-slate-50 text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium"></th>
-                  <th className="px-4 py-3 font-medium">Policy</th>
-                  <th className="px-4 py-3 font-medium">Customer</th>
-                  <th className="px-4 py-3 font-medium">Broker</th>
-                  <th className="px-4 py-3 font-medium">Attention</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Renewal date</th>
-                  <th className="px-4 py-3 font-medium">Assigned to</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {filteredManualReview.map((item) => {
-                  const isExpanded = expandedRows.has(item.id)
-                  return (
-                    <>
-                      <tr
-                        key={item.id}
-                        onClick={() => toggleExpanded(item.id)}
-                        aria-expanded={isExpanded}
-                        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} Underwriter Workspace for ${item.id}`}
-                        className="cursor-pointer hover:bg-slate-100"
-                      >
-                        <td className="px-4 py-4">
-                          <ExpandCaret expanded={isExpanded} />
-                        </td>
-                        <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
-                        <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
-                        <td className="px-4 py-4 text-slate-700">{item.brokerName || EMPTY_VALUE}</td>
-                        <td className="px-4 py-4"><SeverityBadge attention={item.attention} /></td>
-                        <td className="px-4 py-4 text-slate-700">{collapseStatus(item.status)}</td>
-                        <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
-                        <td className="px-4 py-4 text-slate-700">
-                          {item.assignedUserId ? userNameById.get(item.assignedUserId) ?? item.assignedUserId : 'Unassigned'}
-                        </td>
-                        <td className="px-4 py-4 text-slate-700">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+            <thead className="bg-slate-50 text-slate-500">
+              <tr>
+                <th className="px-4 py-3 font-medium"></th>
+                <th className="px-4 py-3 font-medium">Routing</th>
+                <th className="px-4 py-3 font-medium">Policy</th>
+                <th className="px-4 py-3 font-medium">Customer</th>
+                <th className="px-4 py-3 font-medium">Broker</th>
+                <th className="px-4 py-3 font-medium">Attention</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Renewal date</th>
+                <th className="px-4 py-3 font-medium">Assigned to</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredItems.map((item) => {
+                const isExpanded = expandedRows.has(item.id)
+                const kind = getRowKind(item)
+                const isAutoRenew = kind === 'auto-renew'
+                return (
+                  <Fragment key={item.id}>
+                    <tr
+                      onClick={() => toggleExpanded(item.id)}
+                      aria-expanded={isExpanded}
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} details for ${item.id}`}
+                      className="cursor-pointer hover:bg-slate-100"
+                    >
+                      <td className="px-4 py-4">
+                        <ExpandCaret expanded={isExpanded} />
+                      </td>
+                      <td className="px-4 py-4 text-slate-700">{ROUTING_LABELS[item.routing as Routing] ?? item.routing}</td>
+                      <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
+                      <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
+                      <td className="px-4 py-4 text-slate-700">{item.brokerName || EMPTY_VALUE}</td>
+                      <td className="px-4 py-4"><SeverityBadge attention={item.attention} /></td>
+                      <td className="px-4 py-4 text-slate-700">{isAutoRenew ? EMPTY_VALUE : STATUS_BUCKET_LABELS[getStatusBucket(item)]}</td>
+                      <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
+                      <td className="px-4 py-4 text-slate-700">
+                        {isAutoRenew ? EMPTY_VALUE : item.assignedUserId ? userNameById.get(item.assignedUserId) ?? item.assignedUserId : 'Unassigned'}
+                      </td>
+                      <td className="px-4 py-4 text-slate-700">
+                        {kind === 'workspace' && (
                           <div className="flex flex-col gap-1">
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                setReviewPolicyId(item.id)
-                              }}
-                              className="rounded-lg border border-brand px-2 py-1 text-xs font-semibold text-brand hover:bg-brand/5 active:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-                            >
-                              Review
-                            </button>
+                            {item.routing === 'Manual Review' && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setReviewPolicyId(item.id)
+                                }}
+                                className="rounded-lg border border-brand px-2 py-1 text-xs font-semibold text-brand hover:bg-brand/5 active:bg-brand/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                              >
+                                Review
+                              </button>
+                            )}
                             {!item.assignedUserId && currentUserId && (
                               <button
                                 type="button"
@@ -568,120 +596,47 @@ export default function TeamViewPage() {
                               ))}
                             </select>
                           </div>
+                        )}
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={10} className="bg-slate-50 px-6 py-5">
+                          {kind === 'auto-renew' && (
+                            <FlagDetailPanel
+                              item={item}
+                              stage1Heading="Operational Review Flags (all clear)"
+                              stage2Heading="Company & Financial Flags (all clear)"
+                            />
+                          )}
+                          {kind === 'closed' && (
+                            <>
+                              <h3 className="mb-3 text-sm font-semibold text-slate-900">Underwriter Workspace (Closed — read-only)</h3>
+                              <UnderwriterWorkspace policyId={item.id} routing={item.routing} onUpdate={loadAll} readOnly />
+                            </>
+                          )}
+                          {kind === 'workspace' && (
+                            <>
+                              <h3 className="mb-3 text-sm font-semibold text-slate-900">Underwriter Workspace</h3>
+                              <UnderwriterWorkspace policyId={item.id} routing={item.routing} onUpdate={loadAll} />
+                            </>
+                          )}
                         </td>
                       </tr>
-                      {isExpanded && (
-                        <tr key={`${item.id}-expanded`}>
-                          <td colSpan={9} className="bg-slate-50 px-6 py-5">
-                            <h3 className="mb-3 text-sm font-semibold text-slate-900">Underwriter Workspace</h3>
-                            <UnderwriterWorkspace policyId={item.id} routing={item.routing} onUpdate={loadAll} />
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  )
-                })}
-                {filteredManualReview.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-sm text-slate-500">
-                      No Manual Review items match the current filters.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-              <thead className="bg-slate-50 text-slate-500">
+                    )}
+                  </Fragment>
+                )
+              })}
+              {filteredItems.length === 0 && (
                 <tr>
-                  <th className="px-4 py-3 font-medium"></th>
-                  <th className="px-4 py-3 font-medium">Policy</th>
-                  <th className="px-4 py-3 font-medium">Customer</th>
-                  <th className="px-4 py-3 font-medium">Broker</th>
-                  <th className="px-4 py-3 font-medium">Renewal date</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Assigned to</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
+                  <td colSpan={10} className="px-4 py-8 text-center text-sm text-slate-500">
+                    No items match the current filters.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {filteredNavins.map((item) => {
-                  const isExpanded = expandedRows.has(item.id)
-                  return (
-                    <>
-                      <tr
-                        key={item.id}
-                        onClick={() => toggleExpanded(item.id)}
-                        aria-expanded={isExpanded}
-                        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} Underwriter Workspace for ${item.id}`}
-                        className="cursor-pointer hover:bg-slate-100"
-                      >
-                        <td className="px-4 py-4">
-                          <ExpandCaret expanded={isExpanded} />
-                        </td>
-                        <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
-                        <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
-                        <td className="px-4 py-4 text-slate-700">{item.brokerName || EMPTY_VALUE}</td>
-                        <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
-                        <td className="px-4 py-4 text-slate-700">{collapseStatus(item.status)}</td>
-                        <td className="px-4 py-4 text-slate-700">
-                          {item.assignedUserId ? userNameById.get(item.assignedUserId) ?? item.assignedUserId : 'Unassigned'}
-                        </td>
-                        <td className="px-4 py-4 text-slate-700">
-                          <div className="flex flex-col gap-1">
-                            {!item.assignedUserId && currentUserId && (
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  updatePolicy(item.id, item.status ?? 'Not Started', currentUserId)
-                                }}
-                                className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white hover:bg-brand-dark active:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-                              >
-                                Assign to me
-                              </button>
-                            )}
-                            <select
-                              value={item.assignedUserId ?? ''}
-                              onClick={(event) => event.stopPropagation()}
-                              onChange={(event) => {
-                                event.stopPropagation()
-                                updatePolicy(item.id, item.status ?? 'Not Started', event.target.value || null)
-                              }}
-                              className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                            >
-                              <option value="">Unassigned</option>
-                              {users.map((user) => (
-                                <option key={user.id} value={user.id}>{user.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr key={`${item.id}-expanded`}>
-                          <td colSpan={8} className="bg-slate-50 px-6 py-5">
-                            <h3 className="mb-3 text-sm font-semibold text-slate-900">Underwriter Workspace</h3>
-                            <UnderwriterWorkspace policyId={item.id} routing={item.routing} onUpdate={loadAll} />
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  )
-                })}
-                {filteredNavins.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
-                      No Navins Renew items match the current filters.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {/* No title prop -- RiskQualityPanel now renders its own "Risk Assessment" header

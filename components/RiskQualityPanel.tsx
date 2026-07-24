@@ -170,7 +170,7 @@ function renewalYears(renewalDate: string | null): { expiringYear: string; renew
 // flag breakdown, and Historical Performance (mini-metrics + the 3-Yr Loss Ratio table).
 // Read-only -- status/assignment/comments/activity live in the separate Underwriter
 // Workspace (components/UnderwriterWorkspace.tsx), reached via the table's expand row.
-// Shared by the standalone /review/manual/[id] page and Assignment & Management's
+// Shared by the standalone /review/manual/[id] page and Renewal Management's
 // "Review" slide-out -- same data, just different surrounding chrome. Both host contexts
 // leave title rendering entirely to this component now, since the rating-explanation
 // subtext has to sit inline next to the "Risk Assessment" title, not floating separately

@@ -12,8 +12,9 @@ const SEVERITY_FILL: Record<FlagSeverity, string> = {
   warning: 'bg-amber-500 text-slate-900',
 }
 
-// Shared by Manual Review Detail and the Auto-Renew Log (§5.4, §5.6) — same Y/N +
-// synthesized-figure presentation whether a flag fired or came back clean. `severity`
+// Shared by the Risk Assessment panel and Renewal Management's RPUX Auto-Renew
+// expand-row (§5.4, §5.6) — same Y/N + synthesized-figure presentation whether a flag
+// fired or came back clean. `severity`
 // is only passed for flags that actually count toward a grade (see FlagDetailPanel);
 // informational-only rows (Is Frame, D&B Listed Company) omit it and keep the plain
 // text-only treatment, since they're explicitly not flags.

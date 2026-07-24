@@ -3,11 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Assignment & Management' },
-  { href: '/review/auto-renew', label: 'Auto-Renew Log' },
-  { href: '/review/history', label: 'Closed Items' },
-]
+// Down to a single destination now that Manual Review/Navins Renew/RPUX Auto-Renew/
+// Closed Items are one unified list at "/" -- clicking it is a deliberate no-op (it's
+// already where you are), but it still points at "/" rather than "#" so it shows the
+// active-tab underline instead of looking dead.
+const NAV_ITEMS = [{ href: '/', label: 'Renewal Management' }]
 
 export default function HeaderNav() {
   const pathname = usePathname()

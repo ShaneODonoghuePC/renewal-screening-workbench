@@ -24,15 +24,6 @@ export const NAVINS_RENEW_TRANSITIONS: Record<string, string[]> = {
 export const MANUAL_REVIEW_TERMINAL_STATUSES = new Set(['Renewed', 'Not Renewed'])
 export const NAVINS_RENEW_TERMINAL_STATUSES = new Set(['Quote Declined', 'Renewed', 'Not Renewed'])
 
-// Union of every terminal status string across both graphs -- for callers (e.g. the
-// month-tab counter) that see Manual Review and Navins Renew items mixed together
-// without routing context. "Renewed"/"Not Renewed" are terminal in both graphs and
-// never appear as a non-terminal value in either, so this union is unambiguous.
-export const ALL_TERMINAL_STATUSES = new Set([
-  ...MANUAL_REVIEW_TERMINAL_STATUSES,
-  ...NAVINS_RENEW_TERMINAL_STATUSES,
-])
-
 function graphFor(routing: string | null | undefined) {
   return routing === 'NAVINS Renew' ? NAVINS_RENEW_TRANSITIONS : MANUAL_REVIEW_TRANSITIONS
 }

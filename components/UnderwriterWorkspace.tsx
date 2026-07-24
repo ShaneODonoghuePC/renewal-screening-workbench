@@ -42,8 +42,9 @@ function activityDescription(entry: ActivityEntry, userNameById: Map<string, str
 }
 
 // Status control, assigned-to, comment thread, and activity log for a single policy --
-// used inline in Assignment & Management's row-expansion, for both Manual Review and
-// Navins Renew (routing picks which status-transition graph applies). Split out from
+// used inline in Renewal Management's row-expansion, for Manual Review and Navins
+// Renew rows (routing picks which status-transition graph applies), plus Closed rows
+// of either routing in read-only mode. Split out from
 // the Risk Quality Panel (Phase 2A): that one stays reachable the same way it always
 // was (Review button slide-out / standalone page); this one is new UI, wired to the
 // same existing comments/activity_log tables, which were already generic per policy.
@@ -51,10 +52,16 @@ export default function UnderwriterWorkspace({
   policyId,
   routing,
   onUpdate,
+  readOnly = false,
 }: {
   policyId: string
   routing: string
   onUpdate?: () => void
+  // Closed items are meant to stay immutable -- same component, same data (status,
+  // assignment, comments, activity log all still visible), but every control that
+  // could change something is disabled/hidden rather than just left interactive and
+  // hoping nobody clicks it.
+  readOnly?: boolean
 }) {
   const [statusState, setStatusState] = useState<StatusState | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
@@ -125,7 +132,7 @@ export default function UnderwriterWorkspace({
   }, [policyId, onUpdate])
 
   const changeStatus = async (newStatus: string) => {
-    if (!statusState || newStatus === statusState.status) return
+    if (readOnly || !statusState || newStatus === statusState.status) return
     setSaving(true)
     try {
       await fetch(`/api/policies/${encodeURIComponent(policyId)}/status`, {
@@ -141,7 +148,7 @@ export default function UnderwriterWorkspace({
   }
 
   const changeAssignment = async (newUserId: string | null) => {
-    if (!statusState) return
+    if (readOnly || !statusState) return
     setSaving(true)
     try {
       await fetch(`/api/policies/${encodeURIComponent(policyId)}/status`, {
@@ -157,7 +164,7 @@ export default function UnderwriterWorkspace({
   }
 
   const submitComment = async () => {
-    if (!commentDraft.trim()) return
+    if (readOnly || !commentDraft.trim()) return
     setSaving(true)
     try {
       await fetch(`/api/policies/${encodeURIComponent(policyId)}/comments`, {
@@ -198,7 +205,7 @@ export default function UnderwriterWorkspace({
           <select
             value={statusState.status}
             onChange={(event) => changeStatus(event.target.value)}
-            disabled={saving}
+            disabled={readOnly || saving}
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
           >
             {statusOptions.map((option) => (
@@ -212,7 +219,7 @@ export default function UnderwriterWorkspace({
           <select
             value={statusState.assignedUserId ?? ''}
             onChange={(event) => changeAssignment(event.target.value || null)}
-            disabled={saving}
+            disabled={readOnly || saving}
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
           >
             <option value="">Unassigned</option>
@@ -222,7 +229,7 @@ export default function UnderwriterWorkspace({
           </select>
         </label>
 
-        {!statusState.assignedUserId && currentUserId && (
+        {!readOnly && !statusState.assignedUserId && currentUserId && (
           <button
             type="button"
             onClick={() => changeAssignment(currentUserId)}
@@ -249,23 +256,25 @@ export default function UnderwriterWorkspace({
               </div>
             ))}
           </div>
-          <div className="mt-3 flex flex-col gap-2">
-            <textarea
-              value={commentDraft}
-              onChange={(event) => setCommentDraft(event.target.value)}
-              placeholder="Add a comment…"
-              rows={2}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-            />
-            <button
-              type="button"
-              onClick={submitComment}
-              disabled={saving || !commentDraft.trim()}
-              className="self-start rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark active:bg-brand-dark disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-            >
-              Add comment
-            </button>
-          </div>
+          {!readOnly && (
+            <div className="mt-3 flex flex-col gap-2">
+              <textarea
+                value={commentDraft}
+                onChange={(event) => setCommentDraft(event.target.value)}
+                placeholder="Add a comment…"
+                rows={2}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              />
+              <button
+                type="button"
+                onClick={submitComment}
+                disabled={saving || !commentDraft.trim()}
+                className="self-start rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark active:bg-brand-dark disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                Add comment
+              </button>
+            </div>
+          )}
         </div>
 
         <div>

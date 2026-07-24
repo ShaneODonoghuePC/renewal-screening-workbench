@@ -21,8 +21,9 @@ export type FlagEvidence = {
   dnbListedExchange: string | null
 }
 
-// Shared inline flag breakdown, used by Team View's Manual Review expand-row preview
-// and the Auto-Renew Log's expand-row detail (§5.3, §5.6) — same fields, same layout.
+// Shared inline flag breakdown, used by RiskQualityPanel's Risk Assessment view and by
+// Renewal Management's RPUX Auto-Renew expand-row detail (§5.3, §5.6) — same fields,
+// same layout.
 export default function FlagDetailPanel({
   item,
   stage1Heading = 'Stage 1 flags',
