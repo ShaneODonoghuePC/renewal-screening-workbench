@@ -16,6 +16,7 @@ export type RiskQualityInput = {
   dnbRatingBelowA: boolean
   latestProfitNegative: boolean
   assetsMovedSignificant: boolean
+  dnbListedCompany: boolean
 }
 
 // One year of the 3-Yr Loss Ratio table (oldest -> newest).
@@ -91,10 +92,12 @@ export function computeOperationalGrade(policy: RiskQualityInput): Grade {
   return 'A'
 }
 
-// Company & Financial grade, from the real Stage 2 flags (D&B Listed Company stays
-// excluded — informational only, same as the real methodology).
+// Company & Financial grade, from the real Stage 2 flags -- D&B Listed Company counts
+// alongside the other three now (same tier, same threshold rule), derived straight from
+// the four boolean fields rather than the stored stage2FlagCount column, which predates
+// this field counting here and would undercount.
 export function computeCompanyFinancialGrade(policy: RiskQualityInput): Grade {
-  const flags = [policy.dnbRatingBelowA, policy.latestProfitNegative, policy.assetsMovedSignificant]
+  const flags = [policy.dnbRatingBelowA, policy.latestProfitNegative, policy.assetsMovedSignificant, policy.dnbListedCompany]
   const firedCount = flags.filter(Boolean).length
   if (firedCount >= 2) return 'C'
   if (firedCount === 1) return 'B'
@@ -118,6 +121,7 @@ function companyFinancialReason(policy: RiskQualityInput): string {
   if (policy.dnbRatingBelowA) fired.push('D&B Rating Below A')
   if (policy.latestProfitNegative) fired.push('Latest Profit Negative')
   if (policy.assetsMovedSignificant) fired.push('Assets Moved >25% YoY')
+  if (policy.dnbListedCompany) fired.push('D&B Listed Company')
   return fired.length > 0 ? fired.join(', ') : 'no flags raised'
 }
 

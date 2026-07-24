@@ -40,6 +40,13 @@ const ROUTING_LABELS: Record<Routing, string> = {
   'RPUX Auto Renew': 'RPUX Auto-Renew',
 }
 
+// The Routing filter's own option set adds an "All" choice on top of the three real
+// routings -- default selection, superseding the old Manual Review + Navins Renew
+// default from the previous round.
+type RoutingFilterOption = 'all' | Routing
+const ROUTING_FILTER_OPTIONS: readonly RoutingFilterOption[] = ['all', ...ROUTING_OPTIONS]
+const ROUTING_FILTER_LABELS: Record<RoutingFilterOption, string> = { all: 'All', ...ROUTING_LABELS }
+
 // The extended Status filter's three buckets, replacing the old per-routing literal-
 // status dropdown (Not Started/In Review/With Broker vs. Not Started/Quote Sent/Policy
 // Sent) -- those differ by routing, so once rows of different routings are mixed in one
@@ -52,6 +59,12 @@ const STATUS_BUCKET_LABELS: Record<StatusBucket, string> = {
   started: 'Started',
   closed: 'Closed',
 }
+
+// Same "All" addition as the Routing filter -- default selection, superseding the old
+// Started + Not Started default from the previous round.
+type StatusFilterOption = 'all' | StatusBucket
+const STATUS_FILTER_OPTIONS: readonly StatusFilterOption[] = ['all', ...STATUS_BUCKETS]
+const STATUS_FILTER_LABELS: Record<StatusFilterOption, string> = { all: 'All', ...STATUS_BUCKET_LABELS }
 
 const ATTENTION_OPTIONS = ['High', 'Medium', 'None']
 
@@ -99,12 +112,18 @@ function MultiSelectDropdown<T extends string>({
   optionLabel,
   selected,
   onChange,
+  allValue,
 }: {
   label: string
   options: readonly T[]
   optionLabel?: (option: T) => string
   selected: Set<T>
   onChange: (next: Set<T>) => void
+  // When set, this option is a mutually-exclusive "everything" choice: checking it
+  // clears every other selection, checking anything else while it's active clears it
+  // instead, and clearing back down to nothing falls back to it rather than leaving
+  // the filter selecting zero items.
+  allValue?: T
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -122,8 +141,29 @@ function MultiSelectDropdown<T extends string>({
     const next = new Set(selected)
     if (next.has(option)) next.delete(option)
     else next.add(option)
-    onChange(next)
+
+    if (allValue == null) {
+      onChange(next)
+      return
+    }
+
+    const prevHasAll = selected.has(allValue)
+    const nextHasAll = next.has(allValue)
+    if (nextHasAll && !prevHasAll) {
+      // Just checked "All" -- it wins outright, drop everything else.
+      onChange(new Set([allValue]))
+      return
+    }
+    // Either a specific option was toggled (possibly while "All" was active, in which
+    // case it should fall away), or "All" itself was unchecked -- either way, drop
+    // "All" from the result and fall back to it only if nothing else is left selected.
+    const cleaned = new Set(next)
+    cleaned.delete(allValue)
+    onChange(cleaned.size > 0 ? cleaned : new Set([allValue]))
   }
+
+  const isAllSelected = allValue != null && selected.size === 1 && selected.has(allValue)
+  const buttonLabel = isAllSelected || selected.size === 0 ? label : `${label} (${selected.size})`
 
   return (
     <div className="relative flex flex-col gap-1 text-xs font-medium text-slate-600" ref={ref}>
@@ -133,7 +173,7 @@ function MultiSelectDropdown<T extends string>({
         onClick={() => setOpen((o) => !o)}
         className="flex items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
       >
-        <span>{selected.size > 0 ? `${label} (${selected.size})` : label}</span>
+        <span>{buttonLabel}</span>
         <span className="text-slate-400" aria-hidden="true">▾</span>
       </button>
       {open && (
@@ -170,11 +210,11 @@ export default function TeamViewPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Defaults reproduce exactly what the old Assignment & Management page showed:
-  // Manual Review + Navins Renew, Started + Not Started (i.e. RPUX Auto-Renew and
-  // Closed both start unchecked).
-  const [routingFilter, setRoutingFilter] = useState<Set<Routing>>(new Set(['Manual Review', 'NAVINS Renew']))
-  const [statusFilter, setStatusFilter] = useState<Set<StatusBucket>>(new Set(['not-started', 'started']))
+  // Both default to "All" -- supersedes the previous round's Manual Review + Navins
+  // Renew / Started + Not Started defaults (which matched the old Assignment &
+  // Management page). Deliberate reversal: nothing is hidden on first load now.
+  const [routingFilter, setRoutingFilter] = useState<Set<RoutingFilterOption>>(new Set(['all']))
+  const [statusFilter, setStatusFilter] = useState<Set<StatusFilterOption>>(new Set(['all']))
   const [attentionFilter, setAttentionFilter] = useState('')
   const [assignedFilter, setAssignedFilter] = useState('')
   const [brokerFilter, setBrokerFilter] = useState('')
@@ -243,9 +283,9 @@ export default function TeamViewPage() {
   const structurallyFilteredItems = useMemo(
     () =>
       items.filter((item) => {
-        if (!routingFilter.has(item.routing as Routing)) return false
+        if (!routingFilter.has('all') && !routingFilter.has(item.routing as Routing)) return false
         if (item.routing === 'RPUX Auto Renew') return true
-        return statusFilter.has(getStatusBucket(item))
+        return statusFilter.has('all') || statusFilter.has(getStatusBucket(item))
       }),
     [items, routingFilter, statusFilter]
   )
@@ -430,18 +470,20 @@ export default function TeamViewPage() {
         <div className="mb-4 flex flex-wrap items-end gap-4">
           <MultiSelectDropdown
             label="Routing"
-            options={ROUTING_OPTIONS}
-            optionLabel={(r) => ROUTING_LABELS[r]}
+            options={ROUTING_FILTER_OPTIONS}
+            optionLabel={(r) => ROUTING_FILTER_LABELS[r]}
             selected={routingFilter}
             onChange={(next) => setRoutingFilter(next)}
+            allValue="all"
           />
 
           <MultiSelectDropdown
             label="Status"
-            options={STATUS_BUCKETS}
-            optionLabel={(s) => STATUS_BUCKET_LABELS[s]}
+            options={STATUS_FILTER_OPTIONS}
+            optionLabel={(s) => STATUS_FILTER_LABELS[s]}
             selected={statusFilter}
             onChange={(next) => setStatusFilter(next)}
+            allValue="all"
           />
 
           <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">

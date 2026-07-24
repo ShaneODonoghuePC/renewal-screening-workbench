@@ -67,7 +67,7 @@ export default function FlagDetailPanel({
             }
             severity="warning"
           />
-          <FlagRow label="D&B Listed Company" fired={item.dnbListedCompany} figure={item.dnbListedExchange} />
+          <FlagRow label="D&B Listed Company" fired={item.dnbListedCompany} figure={item.dnbListedExchange} severity="warning" />
         </div>
       </div>
     </div>

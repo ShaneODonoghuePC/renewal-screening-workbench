@@ -15,9 +15,9 @@ const SEVERITY_FILL: Record<FlagSeverity, string> = {
 // Shared by the Risk Assessment panel and Renewal Management's RPUX Auto-Renew
 // expand-row (§5.4, §5.6) — same Y/N + synthesized-figure presentation whether a flag
 // fired or came back clean. `severity` is only passed for flags that actually count
-// toward a grade (see FlagDetailPanel); informational-only rows (Is Frame, D&B Listed
-// Company) omit it entirely -- they're deliberately not flags, so even when fired
-// they stay plain/muted rather than red, so they read as "not a flag" instead of a
+// toward a grade (see FlagDetailPanel); informational-only rows (currently just Is
+// Frame) omit it entirely -- they're deliberately not flags, so even when fired they
+// stay plain/muted rather than red, so they read as "not a flag" instead of a
 // broken-looking real one.
 export default function FlagRow({
   label,

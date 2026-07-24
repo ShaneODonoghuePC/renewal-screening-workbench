@@ -238,24 +238,27 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Header -- title only. The rating explanation now sits next to the "Risk
-          Quality" section header below instead, one level down from the panel title. */}
-      <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-lg font-semibold text-slate-900">Risk Assessment</h1>
+      {/* Header -- title only, sized/weighted clearly above the section headers below
+          (those are text-lg/semibold; this is larger and bolder so it reads as the
+          panel-level header, not just another section). The Data Verified/Attention
+          pills live here now too, next to the title, rather than down in Identity &
+          Context -- they're policy-level status, not specific to that one section.
+          The rating explanation sits next to the "Risk Quality" section header
+          instead, one level down from the panel title. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+        <h1 className="text-2xl font-bold text-slate-900">Risk Assessment</h1>
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${verifiedPillClasses(dnbVerified)}`}>
+            {dnbVerified ? 'Data Verified (D&B match found)' : 'Data Not Verified (D&B No Match)'}
+          </span>
+          <SeverityBadge attention={policy.attention} />
+        </div>
       </div>
 
       {/* Two-column top section: Identity & Context (left) / Renewal Economics (right). */}
       <div className="grid gap-8 border-b border-slate-200 pb-6 md:grid-cols-2">
         <section>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${verifiedPillClasses(dnbVerified)}`}>
-                {dnbVerified ? 'Data Verified (D&B match found)' : 'Data Not Verified (D&B No Match)'}
-              </span>
-              <SeverityBadge attention={policy.attention} />
-            </div>
-          </div>
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
           <dl>
             <InfoRow label="Policy Number" value={policy.id} />
             <InfoRow label="VAT Number" value={policy.customerIdentifier} />
@@ -287,7 +290,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
             />
           </dl>
           <div className="mt-4">
-            <p className="text-xs font-medium text-slate-500">3 Year Loss Ratio</p>
+            <p className="text-sm font-semibold text-slate-900">3 Year Loss Ratio Trend</p>
             <div className="mt-1">
               <Sparkline values={threeYearRatios} />
             </div>
@@ -326,7 +329,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
           />
           <GradeCard
             label="Company & Financial"
-            scaleInfo="A = no Stage 2 flags fired. B = exactly one flag. C = two or more of D&B Rating Below A, Latest Profit Negative, or Assets Moved >25% YoY."
+            scaleInfo="A = no Stage 2 flags fired. B = exactly one flag. C = two or more of D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company."
             grade={riskQuality.companyFinancial?.grade ?? null}
             momentum={riskQuality.companyFinancial?.momentum ?? 'stable'}
             reason={riskQuality.companyFinancial?.reason}
@@ -370,7 +373,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
           table now shows those same figures (plus two more years) more completely. */}
       <section>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Historical Performance</h2>
-        <p className="mb-1 text-xs font-medium text-slate-500">3-Yr Loss Ratio</p>
+        <p className="mb-1 text-sm font-semibold text-slate-900">3-Yr Loss Ratio</p>
         <LossRatioTable history={riskQuality.lossRatioHistory} currency={policy.currency} />
         <dl className="mt-4">
           <InfoRow label="Claim Frequency" value={`${riskQuality.historicalPerformance.claimFrequency.toFixed(1)}/yr`} />
