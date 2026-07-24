@@ -1,14 +1,12 @@
-// rpgroup.com's actual stat treatment (the "19K+ / 25+ / 18 / 325+" strip on
-// rpgroup.com): a stroke-only outline numeral -- fill matches the page background,
-// -webkit-text-stroke draws the brand-navy outline -- with a small muted label above.
-// No card, no border, sits directly on the page background.
+// The rpgroup.com-inspired stroke-only outline numeral didn't read well in practice --
+// back to the same solid, normal typography as every other number in the app (matches
+// e.g. the Historical Performance mini-cards' value style). No card, no border, sits
+// directly on the page background.
 export default function StatTile({ label, value }: { label: string; value: number | string }) {
   return (
     <div>
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-1 text-4xl font-semibold leading-none text-transparent [-webkit-text-stroke:1.5px_#122933]">
-        {value}
-      </p>
+      <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
     </div>
   )
 }

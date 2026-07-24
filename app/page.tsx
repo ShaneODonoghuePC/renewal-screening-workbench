@@ -292,12 +292,17 @@ export default function TeamViewPage() {
     const manual = summaryMonthItems.filter((item) => item.routing === 'Manual Review' && !isTerminalStatus(item.routing, item.status))
     const navins = summaryMonthItems.filter((item) => item.routing === 'NAVINS Renew' && !isTerminalStatus(item.routing, item.status))
     const autoRenew = summaryMonthItems.filter((item) => item.routing === 'RPUX Auto Renew')
+    // Same "closed" bucket the Status filter uses (getStatusBucket), not a separate
+    // definition -- RPUX Auto-Renew items never come back closed (no status at all),
+    // so this only ever counts Manual Review/Navins Renew.
+    const closed = summaryMonthItems.filter((item) => getStatusBucket(item) === 'closed')
     const totalFlagsRaised = manual.reduce((sum, item) => sum + flagList(item.flagReasons).length, 0)
     return {
       totalRenewals: manual.length + navins.length + autoRenew.length,
       autoRenewCount: autoRenew.length,
       navinsCount: navins.length,
       manualReviewCount: manual.length,
+      closedCount: closed.length,
       totalFlagsRaised,
     }
   }, [summaryMonthItems])
@@ -409,12 +414,14 @@ export default function TeamViewPage() {
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
       )}
 
-      {/* Summary strip: month-scoped overview, independent of the filters below */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      {/* Summary strip: month-scoped overview, independent of the filters below.
+          Right-aligned and tightly packed rather than spread across the full width. */}
+      <section className="flex flex-wrap justify-end gap-x-8 gap-y-3">
         <StatTile label="Total renewals" value={summary.totalRenewals} />
         <StatTile label="Auto-renew" value={summary.autoRenewCount} />
         <StatTile label="Navins Renew" value={summary.navinsCount} />
         <StatTile label="Manual Review" value={summary.manualReviewCount} />
+        <StatTile label="Closed" value={summary.closedCount} />
         <StatTile label="Total flags raised" value={summary.totalFlagsRaised} />
       </section>
 
