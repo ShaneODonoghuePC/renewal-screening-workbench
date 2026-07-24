@@ -367,15 +367,19 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
       {/* Historical Performance (the section) -- the 3-Yr Loss Ratio table is the
           primary content, built straight from lossRatioHistory (same data the
           sparkline above reads, so the two can never contradict each other). Claim
-          frequency/tenure aren't covered by the table, so they follow as InfoRows
-          (same label-left/value-right pattern as Identity & Context, no card styling);
-          Loss ratio/Claims paid/Cumulative premium were dropped entirely since the
-          table now shows those same figures (plus two more years) more completely. */}
+          frequency/tenure aren't covered by the table, so they get their own
+          matching bordered block (same border-slate-200/white/rounded-md treatment as
+          the table) and sub-header, rather than trailing off underneath as an
+          afterthought -- still plain InfoRows inside, just framed to read as a
+          parallel block instead of a lesser one. Loss ratio/Claims paid/Cumulative
+          premium were dropped entirely since the table now shows those same figures
+          (plus two more years) more completely. */}
       <section>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Historical Performance</h2>
         <p className="mb-1 text-sm font-semibold text-slate-900">3-Yr Loss Ratio</p>
         <LossRatioTable history={riskQuality.lossRatioHistory} currency={policy.currency} />
-        <dl className="mt-4">
+        <p className="mb-1 mt-4 text-sm font-semibold text-slate-900">Policy Metrics</p>
+        <dl className="rounded-md border border-slate-200 bg-white p-4">
           <InfoRow label="Claim Frequency" value={`${riskQuality.historicalPerformance.claimFrequency.toFixed(1)}/yr`} />
           <InfoRow label="Tenure" value={`${riskQuality.historicalPerformance.tenureYears} yrs`} />
         </dl>
