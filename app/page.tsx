@@ -389,6 +389,7 @@ export default function TeamViewPage() {
   }
 
   return (
+    <>
     <div className="space-y-6">
       {/* No H1 here -- the "Renewal Management" nav link is the only destination now,
           so it alone identifies the page. */}
@@ -415,8 +416,8 @@ export default function TeamViewPage() {
       )}
 
       {/* Summary strip: month-scoped overview, independent of the filters below.
-          Right-aligned and tightly packed rather than spread across the full width. */}
-      <section className="flex flex-wrap justify-end gap-x-8 gap-y-3">
+          Left-aligned under the Month picker, not spread across the full width. */}
+      <section className="flex flex-wrap gap-x-8 gap-y-3">
         <StatTile label="Total renewals" value={summary.totalRenewals} />
         <StatTile label="Auto-renew" value={summary.autoRenewCount} />
         <StatTile label="Navins Renew" value={summary.navinsCount} />
@@ -646,12 +647,20 @@ export default function TeamViewPage() {
         </div>
       </section>
 
-      {/* No title prop -- RiskQualityPanel now renders its own "Risk Assessment" header
+    </div>
+
+      {/* Deliberately outside the space-y-6 wrapper above: that utility puts a
+          margin-top on every child after the first, and since SlideOutPanel is a
+          position:fixed overlay, the margin still applied to it (fixed elements
+          respect their own margin same as anything else) -- pushing the whole
+          panel down and leaving a gap above it despite h-screen. Sibling of the
+          wrapper instead of a child of it, so it never picks up that spacing.
+          No title prop -- RiskQualityPanel renders its own "Risk Assessment" header
           (title + rating-explanation subtext inline together), so the slide-out chrome
           stays to just the Close button rather than showing a second, separate title. */}
       <SlideOutPanel open={reviewPolicyId !== null} onClose={() => setReviewPolicyId(null)}>
         {reviewPolicyId && <RiskQualityPanel policyId={reviewPolicyId} />}
       </SlideOutPanel>
-    </div>
+    </>
   )
 }

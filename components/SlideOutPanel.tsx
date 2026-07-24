@@ -16,7 +16,7 @@ export default function SlideOutPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} aria-hidden="true" />
-      <div className="relative flex h-full w-full max-w-3xl flex-col bg-white shadow-2xl">
+      <div className="relative flex h-screen w-full max-w-3xl flex-col bg-white shadow-2xl">
         <div className={`flex items-center gap-2 border-b border-slate-200 p-3 ${title ? 'justify-between' : 'justify-end'}`}>
           {title && <h2 className="pl-2 text-xl font-semibold tracking-tight text-slate-900">{title}</h2>}
           <button

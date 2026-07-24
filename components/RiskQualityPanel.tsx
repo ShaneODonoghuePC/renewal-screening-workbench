@@ -238,12 +238,10 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Header -- title + the rating explanation as right-aligned subtext beside it,
-          not a separate line below. The explanation is dynamic/secondary information
-          (what's driving this cycle's rating), so it reads as subtext, not a subtitle. */}
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
+      {/* Header -- title only. The rating explanation now sits next to the "Risk
+          Quality" section header below instead, one level down from the panel title. */}
+      <div className="border-b border-slate-200 pb-4">
         <h1 className="text-lg font-semibold text-slate-900">Risk Assessment</h1>
-        <p className="max-w-md text-right text-sm text-slate-500">{ratingExplanation}</p>
       </div>
 
       {/* Two-column top section: Identity & Context (left) / Renewal Economics (right). */}
@@ -269,12 +267,6 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
 
         <section>
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Renewal Economics</h2>
-          <div className="mb-4">
-            <p className="text-xs font-medium text-slate-500">3 Year Loss Ratio</p>
-            <div className="mt-1">
-              <Sparkline values={threeYearRatios} />
-            </div>
-          </div>
           <dl>
             <InfoRow
               label="Expiring Premium"
@@ -294,6 +286,12 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
               }
             />
           </dl>
+          <div className="mt-4">
+            <p className="text-xs font-medium text-slate-500">3 Year Loss Ratio</p>
+            <div className="mt-1">
+              <Sparkline values={threeYearRatios} />
+            </div>
+          </div>
         </section>
       </div>
 
@@ -304,7 +302,12 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
           boxed (unlike the report-style sections around it) specifically so the
           worst-of-three grade coloring below means something. */}
       <section className={`rounded-lg border p-4 shadow-sm ${riskQualitySectionClasses(sectionGrade)}`}>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Risk Quality</h2>
+        {/* Rating explanation as right-aligned subtext beside this header (demoted a
+            level from the panel title, per the same "secondary/dynamic info" logic). */}
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+          <h2 className="text-lg font-semibold text-slate-900">Risk Quality</h2>
+          <p className="max-w-md text-right text-sm text-slate-500">{ratingExplanation}</p>
+        </div>
 
         {!riskQuality.verified && (
           <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -361,24 +364,18 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
       {/* Historical Performance (the section) -- the 3-Yr Loss Ratio table is the
           primary content, built straight from lossRatioHistory (same data the
           sparkline above reads, so the two can never contradict each other). Claim
-          frequency/tenure aren't covered by the table, so they stay as mini-cards;
-          Loss ratio/Claims paid/Cumulative premium were dropped as mini-cards since
-          the table now shows those same figures (plus two more years) more completely. */}
+          frequency/tenure aren't covered by the table, so they follow as InfoRows
+          (same label-left/value-right pattern as Identity & Context, no card styling);
+          Loss ratio/Claims paid/Cumulative premium were dropped entirely since the
+          table now shows those same figures (plus two more years) more completely. */}
       <section>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Historical Performance</h2>
+        <p className="mb-1 text-xs font-medium text-slate-500">3-Yr Loss Ratio</p>
         <LossRatioTable history={riskQuality.lossRatioHistory} currency={policy.currency} />
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="flex h-full min-w-0 flex-col justify-between rounded-md border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-medium text-slate-500">Claim frequency</p>
-            <p className="whitespace-nowrap text-xl font-semibold text-slate-900">
-              {riskQuality.historicalPerformance.claimFrequency.toFixed(1)}/yr
-            </p>
-          </div>
-          <div className="flex h-full min-w-0 flex-col justify-between rounded-md border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-medium text-slate-500">Tenure</p>
-            <p className="whitespace-nowrap text-xl font-semibold text-slate-900">{riskQuality.historicalPerformance.tenureYears} yrs</p>
-          </div>
-        </div>
+        <dl className="mt-4">
+          <InfoRow label="Claim Frequency" value={`${riskQuality.historicalPerformance.claimFrequency.toFixed(1)}/yr`} />
+          <InfoRow label="Tenure" value={`${riskQuality.historicalPerformance.tenureYears} yrs`} />
+        </dl>
       </section>
     </div>
   )
