@@ -1,15 +1,18 @@
-// Corrects routing on already-inserted synthesized policies that violate the dataset's
-// actual routing rule (zero flags fired -> RPUX Auto Renew; any flag fired -> Manual
-// Review/NAVINS Renew), a bug in the original synthesis generator (see
-// scripts/lib/synthesizePlan.ts, which is now fixed for new rows going forward) that
-// left a handful of already-inserted rows contradicting the rule -- e.g. RPX-DK-10137
-// landed on Manual Review with zero flags fired.
+// Corrects routing on already-inserted policies that violate the dataset's actual
+// routing rule: routing is determined by source system (RPUX vs. Navins, from the id
+// scheme) plus whether any flag fired -- RPUX clean -> RPUX Auto Renew, RPUX flagged ->
+// Manual Review; Navins clean -> NAVINS Renew, Navins flagged -> Manual Review. A bug in
+// the original synthesis generator (see scripts/lib/synthesizePlan.ts, now fixed for new
+// rows going forward) left a handful of already-inserted rows contradicting this rule --
+// e.g. RPX-DK-10137 landed on Manual Review with zero flags fired, and separately,
+// RPX-NO-10136/RPX-NO-10137/RPX-SE-10096 landed on NAVINS Renew despite having an RPX id
+// and a flag fired.
 //
-// Scoped to synthesized rows only, identified structurally (see
-// scripts/lib/fixRoutingPlan.ts for the exact signature) -- this never touches any of
-// the dataset's original policies, even if one of them happens to trip the same check,
-// and never touches review_states/activity_log/comments; the only write is an UPDATE of
-// policies.routing on the synthesized rows found to be wrong.
+// The rule holds with zero exceptions across the original 337 policies (confirmed
+// directly), so anything scripts/lib/fixRoutingPlan.ts finds is guaranteed to be a
+// synthesized row -- no separate "is this synthesized" check is needed. This never
+// touches review_states/activity_log/comments; the only write is an UPDATE of
+// policies.routing on the rows found to violate the rule.
 //
 // Hardcoded to file:./local.db, same convention as migrate-status-workflow.ts and
 // synthesize-data.ts. See dry-run-fix-routing-turso.ts / apply-fix-routing-turso.ts for

@@ -59,6 +59,27 @@ function weightedPick<T extends string>(rand: () => number, weights: Record<T, n
   return entries[entries.length - 1][0]
 }
 
+// Two independent ID schemes coexist in this dataset, one per source system: RPUX
+// (RPX-{country}-{NNNNN}) and Navins ({country}-10.101-{NNNNN}/25/01). Routing is NOT an
+// independent property -- it's fully determined by which source system a policy came
+// from plus whether any flag fired (RPUX clean -> RPUX Auto Renew, RPUX flagged ->
+// Manual Review; Navins clean -> NAVINS Renew, Navins flagged -> Manual Review),
+// confirmed against all 337 original policies with zero exceptions. So a new policy's
+// source system has to be decided BEFORE its id or routing can be, and both of those
+// then follow deterministically from source system + flags -- never sampled on their own.
+function isRpxId(id: string): boolean {
+  return /^RPX-[A-Z]{2}-\d+$/.test(id)
+}
+
+function isNavinsId(id: string): boolean {
+  return /^[A-Z]{2}-10\.101-\d+\/25\/01$/.test(id)
+}
+
+function extractIdNumber(id: string): number | null {
+  const match = /(\d+)(?:\/\d+\/\d+)?$/.exec(id)
+  return match ? Number(match[1]) : null
+}
+
 function bernoulli(rand: () => number, rate: number): boolean {
   return rand() < rate
 }
@@ -138,11 +159,69 @@ export function companyKey(country: string, name: string): string {
   return `${country}|${name}`
 }
 
-// Read-only: SELECT * FROM policies, then pure computation. No INSERT/UPDATE anywhere
-// in this function or anything it calls.
+// Rows this same generator already inserted in an earlier run are RPX-prefixed (this
+// generator has only ever created RPX ids) but must be excluded when computing each
+// country's *original* RPX-vs-Navins proportion below -- otherwise every additional run
+// would skew the proportion further toward RPX, compounding on itself. Identified
+// structurally, the same way applyFixRoutingPlan left them: zero activity_log/comments
+// rows (synthesis never touches either table), and a review_states row (if any -- RPUX
+// Auto Renew never gets one) of exactly 'Not Started'/NULL, the same signature
+// scripts/lib/fixRoutingPlan.ts used. Restricted to an unbroken run of consecutive
+// numbers at the very top of each country's RPX numbering, since nextRpxNumber only ever
+// increments by 1 per new row with no gaps or reuse -- a prior synthesis batch can only
+// occupy one contiguous block immediately above whatever the original max was.
+async function detectPreviouslySynthesizedRpxIds(db: Client, allRows: PolicyRow[]): Promise<Set<string>> {
+  const reviewStatesResult = await db.execute('SELECT policyId, status, assignedUserId FROM review_states')
+  const reviewStateByPolicyId = new Map<string, { status: string; assignedUserId: string | null }>()
+  for (const rs of reviewStatesResult.rows as unknown as Array<{ policyId: string; status: string; assignedUserId: string | null }>) {
+    reviewStateByPolicyId.set(rs.policyId, rs)
+  }
+
+  const activityCounts = await db.execute('SELECT policyId, COUNT(*) as c FROM activity_log GROUP BY policyId')
+  const activityCountByPolicyId = new Map<string, number>()
+  for (const r of activityCounts.rows as unknown as Array<{ policyId: string; c: number }>) activityCountByPolicyId.set(r.policyId, Number(r.c))
+
+  const commentCounts = await db.execute('SELECT policyId, COUNT(*) as c FROM comments GROUP BY policyId')
+  const commentCountByPolicyId = new Map<string, number>()
+  for (const r of commentCounts.rows as unknown as Array<{ policyId: string; c: number }>) commentCountByPolicyId.set(r.policyId, Number(r.c))
+
+  function hasSynthesizedSignature(row: PolicyRow): boolean {
+    if (activityCountByPolicyId.get(row.id)) return false
+    if (commentCountByPolicyId.get(row.id)) return false
+    const rs = reviewStateByPolicyId.get(row.id)
+    if (row.routing === 'RPUX Auto Renew') return rs === undefined
+    return rs !== undefined && rs.status === 'Not Started' && rs.assignedUserId === null
+  }
+
+  const byCountry = new Map<Country, PolicyRow[]>()
+  for (const country of COUNTRIES) byCountry.set(country, [])
+  for (const row of allRows) byCountry.get(row.country as Country)?.push(row)
+
+  const synthesizedIds = new Set<string>()
+  for (const country of COUNTRIES) {
+    const numbered = (byCountry.get(country) ?? [])
+      .filter((row) => isRpxId(row.id))
+      .map((row) => ({ row, num: extractIdNumber(row.id)! }))
+      .sort((a, b) => b.num - a.num)
+
+    let expectedNum = numbered[0]?.num
+    for (const { row, num } of numbered) {
+      if (num !== expectedNum || !hasSynthesizedSignature(row)) break
+      synthesizedIds.add(row.id)
+      expectedNum = num - 1
+    }
+  }
+  return synthesizedIds
+}
+
+// Read-only: SELECT * FROM policies (plus review_states/activity_log/comments, only to
+// identify previously-synthesized rows above), then pure computation. No INSERT/UPDATE
+// anywhere in this function or anything it calls.
 export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan> {
   const allResult = await db.execute('SELECT * FROM policies')
   const allRows = allResult.rows as unknown as PolicyRow[]
+
+  const previouslySynthesizedIds = await detectPreviouslySynthesizedRpxIds(db, allRows)
 
   const byCountry = new Map<Country, PolicyRow[]>()
   for (const country of COUNTRIES) byCountry.set(country, [])
@@ -158,22 +237,22 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
     const rows = byCountry.get(country)!
     if (rows.length === 0) continue
 
-    const idNumbers = rows
-      .map((r) => /(\d{4,6})(?:\/\d+\/\d+)?$/.exec(r.id)?.[1])
-      .filter((n): n is string => !!n)
-      .map(Number)
-    let nextNumber = Math.max(...idNumbers) + 1
+    const rpxNumbers = rows.filter((r) => isRpxId(r.id)).map((r) => extractIdNumber(r.id)!)
+    const navinsNumbers = rows.filter((r) => isNavinsId(r.id)).map((r) => extractIdNumber(r.id)!)
+    let nextRpxNumber = rpxNumbers.length > 0 ? Math.max(...rpxNumbers) + 1 : 10001
+    let nextNavinsNumber = navinsNumbers.length > 0 ? Math.max(...navinsNumbers) + 1 : 10001
 
     const months = [...new Set(rows.map((r) => (r.renewalDate ?? '').slice(0, 7)).filter(Boolean))].sort()
 
-    const routingCounts: Record<string, number> = {}
-    for (const r of rows) routingCounts[r.routing] = (routingCounts[r.routing] ?? 0) + 1
-    // Weights for choosing between the two flagged-routing buckets, once we already
-    // know a row has at least one flag fired. Excludes RPUX Auto Renew entirely --
-    // that bucket is reached only via the no-flags-fired branch below.
-    const flaggedRoutingCounts: Record<string, number> = {}
-    for (const [key, count] of Object.entries(routingCounts)) {
-      if (key !== 'RPUX Auto Renew') flaggedRoutingCounts[key] = count
+    // Source-system proportion, from this country's ORIGINAL policies only (excluding
+    // any rows a prior run of this same generator already added -- see
+    // detectPreviouslySynthesizedRpxIds above). A new policy's source system is sampled
+    // from this, then its id and routing both follow deterministically from that choice.
+    const originalRows = rows.filter((r) => !previouslySynthesizedIds.has(r.id))
+    const sourceSystemCounts = { rpx: 0, navins: 0 }
+    for (const r of originalRows) {
+      if (isRpxId(r.id)) sourceSystemCounts.rpx++
+      else if (isNavinsId(r.id)) sourceSystemCounts.navins++
     }
 
     const distinctNames = [...new Set(rows.map((r) => r.customerName))]
@@ -207,8 +286,6 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
       const rowRand = mulberry32(hashSeed(`synthesize-policies-v1:rows:${country}:${month}`))
 
       for (let i = 0; i < extra; i++) {
-        const idNum = nextNumber++
-        const id = `RPX-${country}-${String(idNum).padStart(5, '0')}`
         const customerName = pick(rowRand, distinctNames)
         const brokerName = pick(rowRand, distinctBrokers)
         const day = 1 + Math.floor(rowRand() * daysInMonth)
@@ -227,17 +304,21 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
         const latestProfitNegative = bernoulli(rowRand, flagRates.latestProfitNegative)
         const assetsMovedSignificant = bernoulli(rowRand, flagRates.assetsMovedSignificant)
         const dnbListedCompany = bernoulli(rowRand, flagRates.dnbListedCompany)
-        // Routing is derived from whether any flag actually fired -- clean policies
-        // auto-renew, anything flagged goes to a review queue -- rather than sampled
-        // independently of the flags, which could (and did) produce contradictions
-        // like a flagged row on RPUX Auto Renew or a flag-free row on Manual Review.
         const anyFlagFired = openClaim || premiumUnpaid || renewalTypeManual || systemListedCompany
           || dnbNoMatch || dnbStatusInactive || dnbRatingBelowA || latestProfitNegative
           || assetsMovedSignificant || dnbListedCompany
-        const routing = anyFlagFired
-          ? weightedPick(rowRand, flaggedRoutingCounts as Record<string, number>)
-          : 'RPUX Auto Renew'
-        const isAutoRenew = !anyFlagFired
+
+        // Source system is sampled first (from this country's original RPX-vs-Navins
+        // proportion), then id and routing both follow deterministically from source
+        // system + whether any flag fired -- never sampled independently of each other,
+        // which is how a Navins-style-id row previously ended up marked RPUX Auto Renew
+        // and vice versa.
+        const sourceSystem = weightedPick(rowRand, sourceSystemCounts)
+        const id = sourceSystem === 'rpx'
+          ? `RPX-${country}-${String(nextRpxNumber++).padStart(5, '0')}`
+          : `${country}-10.101-${String(nextNavinsNumber++).padStart(5, '0')}/25/01`
+        const routing = anyFlagFired ? 'Manual Review' : (sourceSystem === 'rpx' ? 'RPUX Auto Renew' : 'NAVINS Renew')
+        const isClean = !anyFlagFired
 
         const newRow: PolicyRow = {
           id,
@@ -272,9 +353,9 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
 
         // Derived fields, same convention verified against 100% of existing rows
         // (see synthesize-data.ts's dry-run report / the analysis behind this script).
-        const predictorConcern = !isAutoRenew && bernoulli(rowRand, predictorRate)
-        const significantEvent = !isAutoRenew && bernoulli(rowRand, significantRate)
-        const listedStatusUnknown = !isAutoRenew && bernoulli(rowRand, listedUnknownRate)
+        const predictorConcern = !isClean && bernoulli(rowRand, predictorRate)
+        const significantEvent = !isClean && bernoulli(rowRand, significantRate)
+        const listedStatusUnknown = !isClean && bernoulli(rowRand, listedUnknownRate)
 
         const reasons: string[] = []
         for (const [key, label] of FLAG_REASON_LABELS) {
