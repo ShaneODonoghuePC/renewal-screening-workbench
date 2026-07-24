@@ -17,6 +17,7 @@ import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel
 type TeamItem = FlagEvidence & {
   id: string
   customerName: string
+  customerIdentifier: string
   brokerName: string | null
   premium: number | null
   attention: string | null
@@ -165,8 +166,9 @@ function MultiSelectDropdown<T extends string>({
   // When the selection means "no filtering applied," the control shows the literal
   // word "All" -- same visual language as the plain <select> filters (Attention/
   // Assigned to/Broker), which show "All" rather than their own field name in the
-  // same situation. The bare label is only for the (allValue-less) empty-selection
-  // case, e.g. Flag type with nothing checked.
+  // same situation. The bare label only shows up for an allValue-less dropdown with
+  // nothing checked (none of the three current call sites do this, but the fallback
+  // stays so a future one without an "All" option doesn't just show blank).
   const isAllSelected = allValue != null && selected.size === 1 && selected.has(allValue)
   const buttonLabel = isAllSelected ? 'All' : selected.size === 0 ? label : `${label} (${selected.size})`
 
@@ -223,7 +225,9 @@ export default function TeamViewPage() {
   const [attentionFilter, setAttentionFilter] = useState('')
   const [assignedFilter, setAssignedFilter] = useState('')
   const [brokerFilter, setBrokerFilter] = useState('')
-  const [flagFilter, setFlagFilter] = useState<string[]>([])
+  // 'all' sentinel, same pattern/semantics as Routing/Status -- explicit default
+  // rather than relying on an empty selection looking the same by coincidence.
+  const [flagFilter, setFlagFilter] = useState<Set<string>>(new Set(['all']))
   const [sortField, setSortField] = useState<'renewalDate' | 'attention' | 'status'>('renewalDate')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   // "Assigned to" defaults to the acting-as user (replaces My Queue's personal-view role) —
@@ -361,6 +365,8 @@ export default function TeamViewPage() {
     return [...set].sort()
   }, [monthFilteredItems])
 
+  const flagFilterOptions = useMemo(() => ['all', ...availableFlags], [availableFlags])
+
   const availableBrokers = useMemo(() => {
     const set = new Set<string>()
     monthFilteredItems.forEach((item) => {
@@ -393,10 +399,10 @@ export default function TeamViewPage() {
     if (assignedFilter === 'unassigned') result = result.filter((item) => !item.assignedUserId)
     else if (assignedFilter) result = result.filter((item) => item.assignedUserId === assignedFilter)
     if (brokerFilter) result = result.filter((item) => item.brokerName === brokerFilter)
-    if (flagFilter.length > 0) {
+    if (!flagFilter.has('all')) {
       result = result.filter((item) => {
         const flags = flagList(item.flagReasons)
-        return flagFilter.some((flag) => flags.includes(flag))
+        return flags.some((flag) => flagFilter.has(flag))
       })
     }
     return sortItems(result)
@@ -472,99 +478,108 @@ export default function TeamViewPage() {
       </section>
 
       <section className="rounded-lg border border-slate-200 p-6 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-end gap-4">
-          <MultiSelectDropdown
-            label="Routing"
-            options={ROUTING_FILTER_OPTIONS}
-            optionLabel={(r) => ROUTING_FILTER_LABELS[r]}
-            selected={routingFilter}
-            onChange={(next) => setRoutingFilter(next)}
-            allValue="all"
-          />
+        {/* Filter group (Broker -> Flag Type) on the left; Sort by/Ascending are a
+            distinct "how it's ordered" control, not another filter, so they sit
+            right-aligned and visually separated rather than inline with the rest. */}
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+              Broker
+              <select
+                value={brokerFilter}
+                onChange={(event) => setBrokerFilter(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              >
+                <option value="">All</option>
+                {availableBrokers.map((broker) => (
+                  <option key={broker} value={broker}>{broker}</option>
+                ))}
+              </select>
+            </label>
 
-          <MultiSelectDropdown
-            label="Status"
-            options={STATUS_FILTER_OPTIONS}
-            optionLabel={(s) => STATUS_FILTER_LABELS[s]}
-            selected={statusFilter}
-            onChange={(next) => setStatusFilter(next)}
-            allValue="all"
-          />
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+              Assigned to
+              <select
+                value={assignedFilter}
+                onChange={(event) => setAssignedFilter(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              >
+                <option value="">All</option>
+                <option value="unassigned">Unassigned</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>{user.name}</option>
+                ))}
+              </select>
+            </label>
 
-          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-            Attention
-            <select
-              value={attentionFilter}
-              onChange={(event) => setAttentionFilter(event.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-            >
-              <option value="">All</option>
-              {ATTENTION_OPTIONS.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-            Assigned to
-            <select
-              value={assignedFilter}
-              onChange={(event) => setAssignedFilter(event.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-            >
-              <option value="">All</option>
-              <option value="unassigned">Unassigned</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>{user.name}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-            Broker
-            <select
-              value={brokerFilter}
-              onChange={(event) => setBrokerFilter(event.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-            >
-              <option value="">All</option>
-              {availableBrokers.map((broker) => (
-                <option key={broker} value={broker}>{broker}</option>
-              ))}
-            </select>
-          </label>
-
-          {availableFlags.length > 0 && (
             <MultiSelectDropdown
-              label="Flag type"
-              options={availableFlags}
-              selected={new Set(flagFilter)}
-              onChange={(next) => setFlagFilter([...next])}
+              label="Status"
+              options={STATUS_FILTER_OPTIONS}
+              optionLabel={(s) => STATUS_FILTER_LABELS[s]}
+              selected={statusFilter}
+              onChange={(next) => setStatusFilter(next)}
+              allValue="all"
             />
-          )}
 
-          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-            Sort by
-            <select
-              value={sortField}
-              onChange={(event) => setSortField(event.target.value as typeof sortField)}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+            <MultiSelectDropdown
+              label="Routing"
+              options={ROUTING_FILTER_OPTIONS}
+              optionLabel={(r) => ROUTING_FILTER_LABELS[r]}
+              selected={routingFilter}
+              onChange={(next) => setRoutingFilter(next)}
+              allValue="all"
+            />
+
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+              Attention
+              <select
+                value={attentionFilter}
+                onChange={(event) => setAttentionFilter(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              >
+                <option value="">All</option>
+                {ATTENTION_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+
+            {flagFilterOptions.length > 1 && (
+              <MultiSelectDropdown
+                label="Flag type"
+                options={flagFilterOptions}
+                optionLabel={(f) => (f === 'all' ? 'All' : f)}
+                selected={flagFilter}
+                onChange={(next) => setFlagFilter(next)}
+                allValue="all"
+              />
+            )}
+
+            {loading && <p className="text-sm text-slate-500">Loading…</p>}
+          </div>
+
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+              Sort by
+              <select
+                value={sortField}
+                onChange={(event) => setSortField(event.target.value as typeof sortField)}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              >
+                <option value="renewalDate">Renewal date</option>
+                <option value="attention">Attention</option>
+                <option value="status">Status</option>
+              </select>
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             >
-              <option value="renewalDate">Renewal date</option>
-              <option value="attention">Attention</option>
-              <option value="status">Status</option>
-            </select>
-          </label>
-
-          <button
-            type="button"
-            onClick={() => setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-          >
-            {sortDir === 'asc' ? 'Ascending ↑' : 'Descending ↓'}
-          </button>
-
-          {loading && <p className="text-sm text-slate-500">Loading…</p>}
+              {sortDir === 'asc' ? 'Ascending ↑' : 'Descending ↓'}
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -572,15 +587,16 @@ export default function TeamViewPage() {
             <thead className="bg-slate-50 text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium"></th>
-                <th className="px-4 py-3 font-medium">Routing</th>
                 <th className="px-4 py-3 font-medium">Policy</th>
-                <th className="px-4 py-3 font-medium">Customer</th>
                 <th className="px-4 py-3 font-medium">Broker</th>
-                <th className="px-4 py-3 font-medium">Attention</th>
-                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Customer</th>
+                <th className="px-4 py-3 font-medium">VAT Number</th>
                 <th className="px-4 py-3 font-medium">Renewal date</th>
                 <th className="px-4 py-3 font-medium">Assigned to</th>
+                <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
+                <th className="px-4 py-3 font-medium">Attention</th>
+                <th className="px-4 py-3 font-medium">Routing</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -599,16 +615,15 @@ export default function TeamViewPage() {
                       <td className="px-4 py-4">
                         <ExpandCaret expanded={isExpanded} />
                       </td>
-                      <td className="px-4 py-4 text-slate-700">{ROUTING_LABELS[item.routing as Routing] ?? item.routing}</td>
                       <td className="px-4 py-4 font-medium text-slate-900">{item.id}</td>
-                      <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
                       <td className="px-4 py-4 text-slate-700">{item.brokerName || EMPTY_VALUE}</td>
-                      <td className="px-4 py-4"><SeverityBadge attention={item.attention} /></td>
-                      <td className="px-4 py-4 text-slate-700">{isAutoRenew ? EMPTY_VALUE : STATUS_BUCKET_LABELS[getStatusBucket(item)]}</td>
+                      <td className="px-4 py-4 text-slate-700">{item.customerName}</td>
+                      <td className="px-4 py-4 text-slate-700">{item.customerIdentifier || EMPTY_VALUE}</td>
                       <td className="px-4 py-4 text-slate-700">{formatDate(item.renewalDate)}</td>
                       <td className="px-4 py-4 text-slate-700">
                         {isAutoRenew ? EMPTY_VALUE : item.assignedUserId ? userNameById.get(item.assignedUserId) ?? item.assignedUserId : 'Unassigned'}
                       </td>
+                      <td className="px-4 py-4 text-slate-700">{isAutoRenew ? EMPTY_VALUE : STATUS_BUCKET_LABELS[getStatusBucket(item)]}</td>
                       <td className="px-4 py-4 text-slate-700">
                         {kind === 'workspace' && (
                           <div className="flex flex-col gap-1">
@@ -653,10 +668,12 @@ export default function TeamViewPage() {
                           </div>
                         )}
                       </td>
+                      <td className="px-4 py-4"><SeverityBadge attention={item.attention} /></td>
+                      <td className="px-4 py-4 text-slate-700">{ROUTING_LABELS[item.routing as Routing] ?? item.routing}</td>
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={10} className="bg-slate-50 px-6 py-5">
+                        <td colSpan={11} className="bg-slate-50 px-6 py-5">
                           {kind === 'auto-renew' && (
                             <FlagDetailPanel
                               item={item}
@@ -684,7 +701,7 @@ export default function TeamViewPage() {
               })}
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={11} className="px-4 py-8 text-center text-sm text-slate-500">
                     No items match the current filters.
                   </td>
                 </tr>
