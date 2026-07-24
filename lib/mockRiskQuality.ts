@@ -347,23 +347,18 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   }
 }
 
-export type Recommendation = {
-  level: 'auto' | 'standard' | 'escalate'
-  text: string
-  suggestedStatus: 'Renewed' | 'Escalated'
-}
-
-// Simple decision matrix over the graded dimensions: any C, or 2+ dimensions downgraded
-// this cycle -> escalate; any B or a historical trend-watch -> renew as standard, naming
-// what moved; all A with no downgrades -> auto-renew. Company & Financial is left out of
-// the matrix entirely while Unverified (it has no grade yet), and that's called out in
-// the recommendation text rather than silently ignored.
-export function computeRecommendation(rq: RiskQuality): Recommendation {
+// A plain-language explanation of what's driving this cycle's rating -- surfaced as
+// right-aligned subtext next to the "Risk Assessment" title. Same underlying logic as
+// the old computeRecommendation (any C or 2+ dimensions downgraded is worth calling
+// out first; otherwise any B or a trend watch; otherwise all-clear), but purely
+// descriptive -- no action directive (no "Escalate"/"Renew as standard"/"Auto-renew"
+// prefix, no suggested status) now that the Risk Quality section is information-only.
+export function describeRating(rq: RiskQuality): string {
   const dims: Array<{ label: string; grade: Grade; momentum: Momentum }> = [
     { label: 'Operational', grade: rq.operational.grade, momentum: rq.operational.momentum },
   ]
   if (rq.companyFinancial) dims.push({ label: 'Company & Financial', grade: rq.companyFinancial.grade, momentum: rq.companyFinancial.momentum })
-  dims.push({ label: 'Historical', grade: rq.historical.grade, momentum: rq.historical.momentum })
+  dims.push({ label: 'Historical Performance', grade: rq.historical.grade, momentum: rq.historical.momentum })
 
   const suffix = rq.companyFinancial ? '' : ' Company & Financial is not yet graded (Unverified).'
 
@@ -375,7 +370,7 @@ export function computeRecommendation(rq: RiskQuality): Recommendation {
       cDims.length > 0
         ? `${cDims.map((d) => d.label).join(' and ')} graded C`
         : `${downgraded.map((d) => d.label).join(' and ')} downgraded this cycle`
-    return { level: 'escalate', suggestedStatus: 'Escalated', text: `Escalate for senior review: ${reason}.${suffix}` }
+    return `${reason}.${suffix}`
   }
 
   const bDims = dims.filter((d) => d.grade === 'B')
@@ -385,12 +380,8 @@ export function computeRecommendation(rq: RiskQuality): Recommendation {
     if (bDims.length > 0) bits.push(`${bDims.map((d) => d.label).join(' and ')} graded B`)
     if (moved.length > 0) bits.push(moved.map((d) => `${d.label} trending ${d.momentum}`).join(', '))
     if (rq.trendWatch) bits.push('Historical trend worsening (watch)')
-    return { level: 'standard', suggestedStatus: 'Renewed', text: `Renew as standard: ${bits.join('; ')}.${suffix}` }
+    return `${bits.join('; ')}.${suffix}`
   }
 
-  return {
-    level: 'auto',
-    suggestedStatus: 'Renewed',
-    text: `Auto-renew: all dimensions graded A with no downgrades this cycle.${suffix}`,
-  }
+  return `All dimensions graded A with no downgrades this cycle.${suffix}`
 }

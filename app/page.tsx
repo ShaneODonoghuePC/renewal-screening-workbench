@@ -684,7 +684,10 @@ export default function TeamViewPage() {
         )}
       </section>
 
-      <SlideOutPanel open={reviewPolicyId !== null} onClose={() => setReviewPolicyId(null)} title="Risk Quality & Recommendation">
+      {/* No title prop -- RiskQualityPanel now renders its own "Risk Assessment" header
+          (title + rating-explanation subtext inline together), so the slide-out chrome
+          stays to just the Close button rather than showing a second, separate title. */}
+      <SlideOutPanel open={reviewPolicyId !== null} onClose={() => setReviewPolicyId(null)}>
         {reviewPolicyId && <RiskQualityPanel policyId={reviewPolicyId} />}
       </SlideOutPanel>
     </div>

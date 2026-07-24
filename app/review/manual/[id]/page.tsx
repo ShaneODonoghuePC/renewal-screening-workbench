@@ -10,10 +10,9 @@ export default function ManualReviewDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-2">
-        <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to Assignment & Management</Link>
-        <h2 className="text-xl font-semibold tracking-tight text-slate-900">Risk Quality & Recommendation</h2>
-      </div>
+      {/* No page-level title here -- RiskQualityPanel renders its own "Risk Assessment"
+          header (title + rating-explanation subtext inline together). */}
+      <Link href="/" className="text-sm text-slate-600 hover:text-slate-900">&larr; Back to Assignment & Management</Link>
       <RiskQualityPanel policyId={policyId} />
     </div>
   )
