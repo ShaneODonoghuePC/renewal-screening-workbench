@@ -11,6 +11,7 @@ import SlideOutPanel from '@/components/SlideOutPanel'
 import RiskQualityPanel from '@/components/RiskQualityPanel'
 import UnderwriterWorkspace from '@/components/UnderwriterWorkspace'
 import ExpandCaret from '@/components/ExpandCaret'
+import StatTile from '@/components/StatTile'
 
 type TeamItem = {
   id: string
@@ -336,26 +337,11 @@ export default function TeamViewPage() {
 
       {/* Summary strip: month-scoped overview, independent of the filters below */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-slate-500">Total renewals</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.totalRenewals}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-slate-500">Auto-renew</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.autoRenewCount}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-slate-500">Navins Renew</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.navinsCount}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-slate-500">Manual Review</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.manualReviewCount}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-slate-500">Total flags raised</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.totalFlagsRaised}</p>
-        </div>
+        <StatTile label="Total renewals" value={summary.totalRenewals} />
+        <StatTile label="Auto-renew" value={summary.autoRenewCount} />
+        <StatTile label="Navins Renew" value={summary.navinsCount} />
+        <StatTile label="Manual Review" value={summary.manualReviewCount} />
+        <StatTile label="Total flags raised" value={summary.totalFlagsRaised} />
       </section>
 
       <section className="rounded-lg border border-slate-200 p-6 shadow-sm">
