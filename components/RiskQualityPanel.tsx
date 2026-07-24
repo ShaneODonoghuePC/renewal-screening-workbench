@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { formatCurrency, formatCompactCurrency, EMPTY_VALUE } from '@/lib/format'
-import { getRiskQuality, computeRecommendation, computeHistoricalGrade, type Grade, type Momentum } from '@/lib/mockRiskQuality'
+import { getRiskQuality, computeRecommendation, type Grade, type Momentum } from '@/lib/mockRiskQuality'
 import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel'
 import SeverityBadge from '@/components/SeverityBadge'
 
@@ -338,15 +338,15 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         </div>
       </section>
 
-      {/* Historical Performance — mocked, does not affect grade */}
+      {/* Historical Performance -- the Loss ratio card's figure is the 3-Yr Loss Ratio
+          table's most recent year (single source of truth, see lib/mockRiskQuality.ts),
+          and its RAG tint reuses riskQuality.historical.grade directly rather than
+          recomputing a grade independently, so this can never disagree with the
+          Historical dimension card above. */}
       <section>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Historical Performance</h2>
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <div
-            className={`flex h-full min-w-0 flex-col justify-between rounded-md border p-4 ${ragCardClasses(
-              computeHistoricalGrade(riskQuality.historicalPerformance.lossRatio)
-            )}`}
-          >
+          <div className={`flex h-full min-w-0 flex-col justify-between rounded-md border p-4 ${ragCardClasses(riskQuality.historical.grade)}`}>
             <p className="text-xs font-medium opacity-75">Loss ratio</p>
             <p className="whitespace-nowrap text-xl font-semibold">{Math.round(riskQuality.historicalPerformance.lossRatio * 100)}%</p>
           </div>
