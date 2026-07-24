@@ -318,60 +318,59 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
       </div>
 
       {/* Risk Quality -- information-only (no recommendation/suggested action here
-          anymore; the rating explanation moved up to the header). Data Confidence and
+          anymore; the rating explanation sits under the header). Data Confidence and
           Operational/Company & Financial grades are derived from real flag data;
-          Historical Performance and the figures below are still mocked. Section stays
-          boxed (unlike the report-style sections around it) specifically so the
-          worst-of-three grade coloring below means something. */}
-      <section className={`rounded-lg border p-4 shadow-sm ${riskQualitySectionClasses(sectionGrade)}`}>
-        {/* Rating explanation as right-aligned subtext beside this header (demoted a
-            level from the panel title, per the same "secondary/dynamic info" logic). */}
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-          <h2 className="text-lg font-semibold text-slate-900">Risk Quality</h2>
-          <p className="max-w-md text-right text-sm text-slate-500">{ratingExplanation}</p>
-        </div>
+          Historical Performance and the figures below are still mocked. The header
+          itself is unboxed, matching Identity & Context / Renewal Economics / Historical
+          Performance above and below -- only the grade cards + Flag Reasons stay boxed,
+          since that's the part the worst-of-three grade coloring is actually about. */}
+      <section>
+        <h2 className="mb-1 text-lg font-semibold text-slate-900">Risk Quality</h2>
+        <p className="mb-4 text-sm text-slate-500">{ratingExplanation}</p>
 
-        {!riskQuality.verified && (
-          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            Data confidence is Unverified (D&amp;B No Match or D&amp;B Status Inactive), so Company &amp; Financial
-            grading is not yet calculated.
-          </p>
-        )}
+        <div className={`rounded-lg border p-4 shadow-sm ${riskQualitySectionClasses(sectionGrade)}`}>
+          {!riskQuality.verified && (
+            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              Data confidence is Unverified (D&amp;B No Match or D&amp;B Status Inactive), so Company &amp; Financial
+              grading is not yet calculated.
+            </p>
+          )}
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <GradeCard
-            label="Operational"
-            scaleInfo="A = no Stage 1 flags fired. B = exactly one non-critical flag. C = Open Claim, Premium Unpaid, or 2+ flags fired."
-            grade={riskQuality.operational.grade}
-            momentum={riskQuality.operational.momentum}
-            reason={riskQuality.operational.reason}
-          />
-          <GradeCard
-            label="Company & Financial"
-            scaleInfo="A = no Stage 2 flags fired. B = exactly one flag. C = two or more of D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company."
-            grade={riskQuality.companyFinancial?.grade ?? null}
-            momentum={riskQuality.companyFinancial?.momentum ?? 'stable'}
-            reason={riskQuality.companyFinancial?.reason}
-          />
-          {/* Renamed from "Historical" -- shares its exact name with the Historical
-              Performance section further down (the one with the loss ratio table).
-              That's intentional: this is the grade card, that's the section. Its
-              sparkline moved up to Renewal Economics, so no `history` prop here. */}
-          <GradeCard
-            label="Historical Performance"
-            scaleInfo="Reflects historical claims performance. A persistent loss-ratio increase raises a Watch flag even before the letter grade changes."
-            grade={riskQuality.historical.grade}
-            momentum={riskQuality.historical.momentum}
-            reason={riskQuality.historical.reason}
-            watch={riskQuality.trendWatch}
-          />
-        </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <GradeCard
+              label="Operational"
+              scaleInfo="A = no Stage 1 flags fired. B = exactly one non-critical flag. C = Open Claim, Premium Unpaid, or 2+ flags fired."
+              grade={riskQuality.operational.grade}
+              momentum={riskQuality.operational.momentum}
+              reason={riskQuality.operational.reason}
+            />
+            <GradeCard
+              label="Company & Financial"
+              scaleInfo="A = no Stage 2 flags fired. B = exactly one flag. C = two or more of D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company."
+              grade={riskQuality.companyFinancial?.grade ?? null}
+              momentum={riskQuality.companyFinancial?.momentum ?? 'stable'}
+              reason={riskQuality.companyFinancial?.reason}
+            />
+            {/* Renamed from "Historical" -- shares its exact name with the Historical
+                Performance section further down (the one with the loss ratio table).
+                That's intentional: this is the grade card, that's the section. Its
+                sparkline moved up to Renewal Economics, so no `history` prop here. */}
+            <GradeCard
+              label="Historical Performance"
+              scaleInfo="Reflects historical claims performance. A persistent loss-ratio increase raises a Watch flag even before the letter grade changes."
+              grade={riskQuality.historical.grade}
+              momentum={riskQuality.historical.momentum}
+              reason={riskQuality.historical.reason}
+              watch={riskQuality.trendWatch}
+            />
+          </div>
 
-        {/* Flag Reasons, promoted up from below the flag breakdown -- it now
-            summarizes what's coming before the detailed Y/N list, not after it. */}
-        <div className="mt-6">
-          <dt className="text-sm text-slate-500">Flag Reasons</dt>
-          <dd className="mt-1 text-sm font-medium text-slate-900">{policy.flagReasons || EMPTY_VALUE}</dd>
+          {/* Flag Reasons, promoted up from below the flag breakdown -- it now
+              summarizes what's coming before the detailed Y/N list, not after it. */}
+          <div className="mt-6">
+            <dt className="text-sm text-slate-500">Flag Reasons</dt>
+            <dd className="mt-1 text-sm font-medium text-slate-900">{policy.flagReasons || EMPTY_VALUE}</dd>
+          </div>
         </div>
       </section>
 

@@ -168,6 +168,13 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
 
     const routingCounts: Record<string, number> = {}
     for (const r of rows) routingCounts[r.routing] = (routingCounts[r.routing] ?? 0) + 1
+    // Weights for choosing between the two flagged-routing buckets, once we already
+    // know a row has at least one flag fired. Excludes RPUX Auto Renew entirely --
+    // that bucket is reached only via the no-flags-fired branch below.
+    const flaggedRoutingCounts: Record<string, number> = {}
+    for (const [key, count] of Object.entries(routingCounts)) {
+      if (key !== 'RPUX Auto Renew') flaggedRoutingCounts[key] = count
+    }
 
     const distinctNames = [...new Set(rows.map((r) => r.customerName))]
     const distinctBrokers = [...new Set(rows.map((r) => r.brokerName))]
@@ -202,7 +209,6 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
       for (let i = 0; i < extra; i++) {
         const idNum = nextNumber++
         const id = `RPX-${country}-${String(idNum).padStart(5, '0')}`
-        const routing = weightedPick(rowRand, routingCounts as Record<string, number>)
         const customerName = pick(rowRand, distinctNames)
         const brokerName = pick(rowRand, distinctBrokers)
         const day = 1 + Math.floor(rowRand() * daysInMonth)
@@ -221,10 +227,17 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
         const latestProfitNegative = bernoulli(rowRand, flagRates.latestProfitNegative)
         const assetsMovedSignificant = bernoulli(rowRand, flagRates.assetsMovedSignificant)
         const dnbListedCompany = bernoulli(rowRand, flagRates.dnbListedCompany)
-        // RPUX Auto Renew is only ever clean in this dataset (that's what routes it
-        // there in the first place) -- force no flags rather than let the empirical
-        // rates (drawn across all routings) occasionally contradict that.
-        const isAutoRenew = routing === 'RPUX Auto Renew'
+        // Routing is derived from whether any flag actually fired -- clean policies
+        // auto-renew, anything flagged goes to a review queue -- rather than sampled
+        // independently of the flags, which could (and did) produce contradictions
+        // like a flagged row on RPUX Auto Renew or a flag-free row on Manual Review.
+        const anyFlagFired = openClaim || premiumUnpaid || renewalTypeManual || systemListedCompany
+          || dnbNoMatch || dnbStatusInactive || dnbRatingBelowA || latestProfitNegative
+          || assetsMovedSignificant || dnbListedCompany
+        const routing = anyFlagFired
+          ? weightedPick(rowRand, flaggedRoutingCounts as Record<string, number>)
+          : 'RPUX Auto Renew'
+        const isAutoRenew = !anyFlagFired
 
         const newRow: PolicyRow = {
           id,
@@ -235,17 +248,17 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
           renewalDate,
           currency: CURRENCY_BY_COUNTRY[country],
           premium,
-          openClaim: isAutoRenew ? false : openClaim,
-          premiumUnpaid: isAutoRenew ? false : premiumUnpaid,
-          renewalTypeManual: isAutoRenew ? false : renewalTypeManual,
-          systemListedCompany: isAutoRenew ? false : systemListedCompany,
+          openClaim,
+          premiumUnpaid,
+          renewalTypeManual,
+          systemListedCompany,
           isFrame: false,
-          dnbNoMatch: isAutoRenew ? false : dnbNoMatch,
-          dnbStatusInactive: isAutoRenew ? false : dnbStatusInactive,
-          dnbRatingBelowA: isAutoRenew ? false : dnbRatingBelowA,
-          latestProfitNegative: isAutoRenew ? false : latestProfitNegative,
-          assetsMovedSignificant: isAutoRenew ? false : assetsMovedSignificant,
-          dnbListedCompany: isAutoRenew ? false : dnbListedCompany,
+          dnbNoMatch,
+          dnbStatusInactive,
+          dnbRatingBelowA,
+          latestProfitNegative,
+          assetsMovedSignificant,
+          dnbListedCompany,
           routing,
           attention: null,
           flagReasons: null,
