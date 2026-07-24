@@ -184,14 +184,14 @@ function MultiSelectDropdown<T extends string>({
         <span className="text-slate-400" aria-hidden="true">▾</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 max-h-56 w-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+        <div className="absolute left-0 top-full z-20 mt-1 max-h-56 w-96 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
           {options.map((option) => (
             <label key={option} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
               <input
                 type="checkbox"
                 checked={selected.has(option)}
                 onChange={() => toggle(option)}
-                className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-slate-300"
+                className="h-4 w-4 shrink-0 rounded border-slate-300 text-brand focus:ring-slate-300"
               />
               {optionLabel ? optionLabel(option) : option}
             </label>

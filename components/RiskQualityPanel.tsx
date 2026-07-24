@@ -29,10 +29,29 @@ function gradeBadgeClasses(grade: Grade) {
   return 'bg-green-600 text-white'
 }
 
-function momentumSymbol(momentum: Momentum) {
-  if (momentum === 'up') return '↑'
-  if (momentum === 'down') return '↓'
-  return '→'
+// Plain Unicode arrows (↑ ↓ →) rendered visibly inconsistently across directions --
+// different glyph weights/widths/baselines depending on the font's own arrow metrics.
+// Same stroke-icon convention as SettingsMenu's gear (viewBox 24x24, stroke=currentColor,
+// strokeWidth 2, round caps/joins) so this reads as one deliberate icon set rather than
+// a one-off. Fixed h-3.5 w-3.5 box -- same footprint as the info icon's circle next to
+// it -- so all three grade cards' arrows sit in an identical, vertically centered slot
+// regardless of which direction they're showing.
+function MomentumArrow({ momentum }: { momentum: Momentum }) {
+  const points = momentum === 'up' ? '5 12 12 5 19 12' : momentum === 'down' ? '19 12 12 19 5 12' : '12 5 19 12 12 19'
+  const line =
+    momentum === 'up'
+      ? { x1: 12, y1: 19, x2: 12, y2: 5 }
+      : momentum === 'down'
+        ? { x1: 12, y1: 5, x2: 12, y2: 19 }
+        : { x1: 5, y1: 12, x2: 19, y2: 12 }
+  return (
+    <span className="inline-flex h-3.5 w-3.5 items-center justify-center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <line x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />
+        <polyline points={points} />
+      </svg>
+    </span>
+  )
 }
 
 // Worst-of-three across the graded dimensions (Company & Financial excluded from the
@@ -104,11 +123,11 @@ function GradeCard({
         </p>
         {grade && (
           <span
-            className={`text-sm ${momentum === 'down' ? 'text-brand' : 'text-slate-400'}`}
+            className={momentum === 'down' ? 'text-brand' : 'text-slate-400'}
             aria-label={`Momentum: ${momentum}`}
             title={`Momentum: ${momentum}`}
           >
-            {momentumSymbol(momentum)}
+            <MomentumArrow momentum={momentum} />
           </span>
         )}
       </div>
