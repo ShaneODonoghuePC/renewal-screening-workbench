@@ -272,7 +272,7 @@ Pending → Done
 | `customerIdentifier` | string | Customer Identifier |
 | `brokerName` | string | Broker Name |
 | `renewalDate` | date | End Date (Renewal Due) — found unpopulated (null on every row) in the seed generation as built 2026-07-15; must be fixed at the seed script, not just the UI layer. See §5.2 for the separate "Renewal Month" derivation rule (month(renewalDate) + 1) used for display/tab-grouping. |
-| `currency` | string | Currency |
+| `currency` | string | Currency — must match `country` (DK→DKK, NO→NOK, SE→SEK, FI→EUR); enforced by data fix, not a schema constraint (2026-09-09, see §8.1) |
 | `premium` | number | Premium (incl. tax) |
 | `openClaim` | boolean | Open Claim |
 | `premiumUnpaid` | boolean | Premium Unpaid |
@@ -370,6 +370,16 @@ Both fixes were applied to **both** `local.db` and production Turso, each via a 
 That gap does **not** mean the repo can't reproduce the current dataset. `computeSynthesizePlan()` (`scripts/lib/synthesizePlan.ts`) is fully deterministic — every random draw is seeded from fixed string keys (`` synthesize-policies-v1:${country}:${month} ``, `` synthesize-vat-v1:${key} ``, etc.) via `mulberry32`; there is no `Math.random` anywhere in the file. Re-running the seed-load (§10) followed by today's synthesis scripts (§8.1) against a wiped `local.db` would deterministically produce 403 policies with the same statistical shape every time — that part is genuinely reproducible.
 
 **What's actually true, verified against `git log -p` on `scripts/lib/synthesizePlan.ts`: the generator that would run today is not the one that produced the 66 rows currently live.** `4186739` (still 2026-07-24, after `e3a0c2a` had already inserted those 66 rows against the *old* generator) rewrote `synthesizePlan.ts` to sample source system first, derive ids from it, and exclude previously-synthesized rows from the proportion it samples from (`detectPreviouslySynthesizedRpxIds`, added in that same commit) — none of which existed when the live rows were generated. Re-running the current generator from a wiped `local.db` would still land on 403 policies with matching distributions, but **the specific policy ids, VAT numbers, and field values it produces would not match what's currently in `local.db` or production** — a different generator, run the same way, does not reproduce the same rows. **The 66 synthesized rows' exact identities exist only in `local.db` and production Turso.** There is no script in this repo that reconstructs them (the seed files don't have them, and the current generator wouldn't recreate the same ones), and no retained snapshot of the pre-`4186739` generator's output. This is stated as a fact about the current build's history, not a recommendation to change anything — that's a decision for Shane, not something to fix silently in a documentation pass.
+
+### 8.2 Currency correction (2026-09-09)
+
+**`policies.currency` must match `policies.country`** (DK→DKK, NO→NOK, SE→SEK, FI→EUR) — this was never true for 13 rows across the dataset (2 DK/USD, 1 NO/SEK, 2 NO/USD, 3 SE/EUR, 4 SE/USD, 1 FI/SEK), present in the original 337-row anonymized data and unaffected by the 2026-07-24 synthesis pass (§8.1's generator has always assigned currency correctly, from a fixed per-country map — confirmed no mismatches among the 66 synthesized rows). **Corrected in all three places this data lives, currency label only — premium amounts were never touched** (these are mocked figures; converting them on top of relabeling would imply a precision they don't have):
+
+- **`/data/seed/*.json`** (`all.json` plus the four per-country files) — `scripts/fix-currency-seed.ts [--apply]`, then `npm run seed-db` to regenerate `init.sql` from the corrected `all.json` (the same two-step relationship §8.1 already documents between them).
+- **`local.db`** — `scripts/fix-currency.ts [--apply]`.
+- **Production Turso** — `scripts/dry-run-fix-currency-turso.ts` (read-only) then `scripts/apply-fix-currency-turso.ts`, which snapshots the full `policies` table to a committed `data/snapshots/policies-pre-currency-fix-<timestamp>.json` file before writing anything, since production has no reseed path.
+
+All three share `scripts/lib/fixCurrencyPlan.ts` (one plan-computation module, so a dry run and its apply can never compute different plans) — same dry-run/apply discipline as the routing and status-workflow fixes (§8.1, §6.4). Verified after applying: zero currency/country mismatches remain in `local.db` or production Turso.
 
 ## 9. Technical architecture
 
