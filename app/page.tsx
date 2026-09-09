@@ -69,6 +69,14 @@ const STATUS_FILTER_LABELS: Record<StatusFilterOption, string> = { all: 'All', .
 
 const ATTENTION_OPTIONS = ['High', 'Medium', 'None']
 
+// One width for every filter control (2026-09-09) -- wide enough for the longest
+// closed-state label across all of them (a full broker name, "Descending ↓", a
+// MultiSelectDropdown's "Label (N)" state) without looking oversized on the short
+// ones. Flag type's OPEN overlay is the one deliberate exception (see
+// MultiSelectDropdown's overlayClassName) -- its options are long enough that
+// matching this width would wrap badly.
+const FILTER_WIDTH = 'w-44'
+
 function formatDate(renewalDate: string | null) {
   if (!renewalDate) return EMPTY_VALUE
   const date = new Date(`${renewalDate}T00:00:00Z`)
@@ -114,6 +122,7 @@ function MultiSelectDropdown<T extends string>({
   selected,
   onChange,
   allValue,
+  overlayClassName,
 }: {
   label: string
   options: readonly T[]
@@ -125,6 +134,13 @@ function MultiSelectDropdown<T extends string>({
   // instead, and clearing back down to nothing falls back to it rather than leaving
   // the filter selecting zero items.
   allValue?: T
+  // Width override for the OPEN overlay only -- the closed trigger button always
+  // matches FILTER_WIDTH (every filter control is the same width, 2026-09-09), but
+  // Flag type's options are long enough ("Attention: D&B Listed Status Unknown") that
+  // forcing the overlay down to that same width would wrap badly. Defaults to
+  // FILTER_WIDTH so Status/Routing's overlays match their closed width exactly, with
+  // nothing jumping wider on open.
+  overlayClassName?: string
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -173,18 +189,18 @@ function MultiSelectDropdown<T extends string>({
   const buttonLabel = isAllSelected ? 'All' : selected.size === 0 ? label : `${label} (${selected.size})`
 
   return (
-    <div className="relative flex flex-col gap-1 text-xs font-medium text-slate-600" ref={ref}>
+    <div className={`relative flex flex-col gap-1 text-xs font-medium text-slate-600 ${FILTER_WIDTH}`} ref={ref}>
       <span>{label}</span>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
       >
-        <span>{buttonLabel}</span>
-        <span className="text-slate-400" aria-hidden="true">▾</span>
+        <span className="truncate">{buttonLabel}</span>
+        <span className="shrink-0 text-slate-400" aria-hidden="true">▾</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 max-h-56 w-96 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+        <div className={`absolute left-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg ${overlayClassName ?? FILTER_WIDTH}`}>
           {options.map((option) => (
             <label key={option} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
               <input
@@ -337,22 +353,23 @@ export default function TeamViewPage() {
     })
   }, [items, selectedMonth])
 
+  // Reduced to three tiles (2026-09-09): Total Renewals, Medium Attention, High
+  // Attention -- Auto-renew/Navins Renew/Manual Review/Total flags raised/Closed all
+  // dropped. Medium/High are scoped to the exact same month-scoped, non-terminal
+  // population Total Renewals sums (manual + navins open items + all auto-renew),
+  // not the full month-scoped set including closed items -- "scoped exactly as Total
+  // Renewals is scoped" read literally, same row set, not just the same month. The
+  // attention check itself ((item.attention || 'None') === X) is the identical
+  // expression the Attention filter above uses -- one definition, not a second one.
   const summary = useMemo(() => {
     const manual = summaryMonthItems.filter((item) => item.routing === 'Manual Review' && !isTerminalStatus(item.routing, item.status))
     const navins = summaryMonthItems.filter((item) => item.routing === 'NAVINS Renew' && !isTerminalStatus(item.routing, item.status))
     const autoRenew = summaryMonthItems.filter((item) => item.routing === 'RPUX Auto Renew')
-    // Same "closed" bucket the Status filter uses (getStatusBucket), not a separate
-    // definition -- RPUX Auto-Renew items never come back closed (no status at all),
-    // so this only ever counts Manual Review/Navins Renew.
-    const closed = summaryMonthItems.filter((item) => getStatusBucket(item) === 'closed')
-    const totalFlagsRaised = manual.reduce((sum, item) => sum + flagList(item.flagReasons).length, 0)
+    const inScope = [...manual, ...navins, ...autoRenew]
     return {
-      totalRenewals: manual.length + navins.length + autoRenew.length,
-      autoRenewCount: autoRenew.length,
-      navinsCount: navins.length,
-      manualReviewCount: manual.length,
-      closedCount: closed.length,
-      totalFlagsRaised,
+      totalRenewals: inScope.length,
+      mediumAttentionCount: inScope.filter((item) => (item.attention || 'None') === 'Medium').length,
+      highAttentionCount: inScope.filter((item) => (item.attention || 'None') === 'High').length,
     }
   }, [summaryMonthItems])
 
@@ -445,50 +462,53 @@ export default function TeamViewPage() {
       {/* No H1 here -- the "Renewal Management" nav link is the only destination now,
           so it alone identifies the page. */}
 
-      {/* Month picker: the first thing to interact with, since the time period being
-          viewed should be obvious at a glance. */}
-      <section className="flex items-center gap-3">
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
-          Month
-          <select
-            value={selectedMonth}
-            onChange={(event) => handleSelectMonth(event.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-          >
-            {tabs.map((tab) => (
-              <option key={tab.value} value={tab.value}>{tab.label}</option>
-            ))}
-          </select>
-        </label>
-      </section>
+      {/* Month picker + summary strip, inline together on one row (2026-09-09 --
+          previously two stacked sections with a full space-y-6 gap between them).
+          Wrapped in its own tight space-y-2 alongside the filter section below, so
+          the gap to the filters closes too, rather than just the gap within this row. */}
+      <div className="space-y-2">
+        <section className="flex flex-wrap items-center justify-between gap-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+            Month
+            <select
+              value={selectedMonth}
+              onChange={(event) => handleSelectMonth(event.target.value)}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+            >
+              {tabs.map((tab) => (
+                <option key={tab.value} value={tab.value}>{tab.label}</option>
+              ))}
+            </select>
+          </label>
 
-      {error && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
-      )}
+          {/* Summary strip: month-scoped overview, independent of the filters below --
+              reduced to three tiles (2026-09-09): Total Renewals, Medium Attention,
+              High Attention. */}
+          <div className="flex flex-wrap gap-x-8 gap-y-1">
+            <StatTile label="Total Renewals" value={summary.totalRenewals} />
+            <StatTile label="Medium Attention" value={summary.mediumAttentionCount} />
+            <StatTile label="High Attention" value={summary.highAttentionCount} />
+          </div>
+        </section>
 
-      {/* Summary strip: month-scoped overview, independent of the filters below.
-          Left-aligned under the Month picker, not spread across the full width. */}
-      <section className="flex flex-wrap gap-x-8 gap-y-3">
-        <StatTile label="Total renewals" value={summary.totalRenewals} />
-        <StatTile label="Auto-renew" value={summary.autoRenewCount} />
-        <StatTile label="Navins Renew" value={summary.navinsCount} />
-        <StatTile label="Manual Review" value={summary.manualReviewCount} />
-        <StatTile label="Closed" value={summary.closedCount} />
-        <StatTile label="Total flags raised" value={summary.totalFlagsRaised} />
-      </section>
+        {error && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">{error}</div>
+        )}
 
       <section className="rounded-lg border border-slate-200 p-6 shadow-sm">
-        {/* Filter group (Broker -> Flag Type) on the left; Sort by/Ascending are a
-            distinct "how it's ordered" control, not another filter, so they sit
-            right-aligned and visually separated rather than inline with the rest. */}
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-          <div className="flex flex-wrap items-end gap-4">
-            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+        {/* All eight filter/sort controls in one row now (2026-09-09) -- previously
+            split into a left "filters" cluster and a right "how it's ordered"
+            cluster; justify-between here spreads all eight evenly across the full
+            width instead. Every control shares FILTER_WIDTH, so nothing is
+            oversized/undersized relative to its neighbours and the row doesn't
+            reflow unevenly. */}
+        <div className="mb-4 flex flex-wrap justify-between gap-4">
+            <label className={`flex flex-col gap-1 text-xs font-medium text-slate-600 ${FILTER_WIDTH}`}>
               Broker
               <select
                 value={brokerFilter}
                 onChange={(event) => setBrokerFilter(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               >
                 <option value="">All</option>
                 {availableBrokers.map((broker) => (
@@ -497,12 +517,12 @@ export default function TeamViewPage() {
               </select>
             </label>
 
-            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+            <label className={`flex flex-col gap-1 text-xs font-medium text-slate-600 ${FILTER_WIDTH}`}>
               Assigned to
               <select
                 value={assignedFilter}
                 onChange={(event) => setAssignedFilter(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               >
                 <option value="">All</option>
                 <option value="unassigned">Unassigned</option>
@@ -530,12 +550,12 @@ export default function TeamViewPage() {
               allValue="all"
             />
 
-            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+            <label className={`flex flex-col gap-1 text-xs font-medium text-slate-600 ${FILTER_WIDTH}`}>
               Attention
               <select
                 value={attentionFilter}
                 onChange={(event) => setAttentionFilter(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               >
                 <option value="">All</option>
                 {ATTENTION_OPTIONS.map((option) => (
@@ -552,19 +572,16 @@ export default function TeamViewPage() {
                 selected={flagFilter}
                 onChange={(next) => setFlagFilter(next)}
                 allValue="all"
+                overlayClassName="w-96"
               />
             )}
 
-            {loading && <p className="text-sm text-slate-500">Loading…</p>}
-          </div>
-
-          <div className="flex flex-wrap items-end gap-4">
-            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+            <label className={`flex flex-col gap-1 text-xs font-medium text-slate-600 ${FILTER_WIDTH}`}>
               Sort by
               <select
                 value={sortField}
                 onChange={(event) => setSortField(event.target.value as typeof sortField)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               >
                 <option value="renewalDate">Renewal date</option>
                 <option value="attention">Attention</option>
@@ -572,14 +589,21 @@ export default function TeamViewPage() {
               </select>
             </label>
 
-            <button
-              type="button"
-              onClick={() => setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-            >
-              {sortDir === 'asc' ? 'Ascending ↑' : 'Descending ↓'}
-            </button>
-          </div>
+            {/* "Direction" label added (2026-09-09) so this matches every other
+                control's label-above-control pattern -- it previously had no
+                caption at all. */}
+            <div className={`flex flex-col gap-1 text-xs font-medium text-slate-600 ${FILTER_WIDTH}`}>
+              <span>Direction</span>
+              <button
+                type="button"
+                onClick={() => setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                {sortDir === 'asc' ? 'Ascending ↑' : 'Descending ↓'}
+              </button>
+            </div>
+
+            {loading && <p className="text-sm text-slate-500">Loading…</p>}
         </div>
 
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -710,6 +734,7 @@ export default function TeamViewPage() {
           </table>
         </div>
       </section>
+      </div>
 
     </div>
 

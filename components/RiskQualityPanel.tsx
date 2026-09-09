@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { formatCurrency, formatCompactCurrency, EMPTY_VALUE } from '@/lib/format'
-import { getRiskQuality, describeRating, type Grade, type Momentum } from '@/lib/mockRiskQuality'
+import { getRiskQuality, unverifiedCompanyFinancialDetails, type Grade } from '@/lib/mockRiskQuality'
 import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel'
-import SeverityBadge from '@/components/SeverityBadge'
 
 type PolicyDetail = FlagEvidence & {
   id: string
@@ -29,42 +28,17 @@ function gradeBadgeClasses(grade: Grade) {
   return 'bg-green-600 text-white'
 }
 
-// Plain Unicode arrows (↑ ↓ →) rendered visibly inconsistently across directions --
-// different glyph weights/widths/baselines depending on the font's own arrow metrics.
-// Same stroke-icon convention as SettingsMenu's gear (viewBox 24x24, stroke=currentColor,
-// strokeWidth 2, round caps/joins) so this reads as one deliberate icon set rather than
-// a one-off. Fixed h-3.5 w-3.5 box -- same footprint as the info icon's circle next to
-// it -- so all three grade cards' arrows sit in an identical, vertically centered slot
-// regardless of which direction they're showing.
-function MomentumArrow({ momentum }: { momentum: Momentum }) {
-  const points = momentum === 'up' ? '5 12 12 5 19 12' : momentum === 'down' ? '19 12 12 19 5 12' : '12 5 19 12 12 19'
-  const line =
-    momentum === 'up'
-      ? { x1: 12, y1: 19, x2: 12, y2: 5 }
-      : momentum === 'down'
-        ? { x1: 12, y1: 5, x2: 12, y2: 19 }
-        : { x1: 5, y1: 12, x2: 19, y2: 12 }
-  return (
-    <span className="inline-flex h-3.5 w-3.5 items-center justify-center">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <line x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />
-        <polyline points={points} />
-      </svg>
-    </span>
-  )
-}
-
 // Worst-of-three across the graded dimensions (Company & Financial excluded from the
-// array entirely while Unverified, same as describeRating) -- this is what colors
-// the whole Risk Quality section container, so one B among otherwise-A grades still
-// reads as amber at a glance, not just on that one card.
+// array entirely while Unverified) -- this is what colors the whole three-card block,
+// so one B among otherwise-A grades still reads as amber at a glance, not just on that
+// one card.
 function worstGrade(grades: Grade[]): Grade {
   if (grades.includes('C')) return 'C'
   if (grades.includes('B')) return 'B'
   return 'A'
 }
 
-// Border/bg only (no text color) so this can wrap the whole section without overriding
+// Border/bg only (no text color) so this can wrap the whole block without overriding
 // the slate text colors already set on its children. Grade A -- the best-grade case --
 // gets the sage accent tint per the brand's small-footprint-accent rule; the grade
 // badges inside stay green-600 regardless, so they read clearly against the sage bg.
@@ -74,63 +48,48 @@ function riskQualitySectionClasses(grade: Grade) {
   return 'border-sage-300 bg-sage-50'
 }
 
-function verifiedPillClasses(verified: boolean) {
-  return verified ? 'border-green-300 bg-green-50 text-green-700' : 'border-amber-300 bg-amber-50 text-amber-700'
-}
-
-// Tiny inline trajectory display -- no charting dependency needed for three points.
-// Used for the 3 Year Loss Ratio sparkline in Renewal Financials (moved here from the
-// Historical Performance grade card, which no longer carries one).
-function Sparkline({ values }: { values: [number, number, number] }) {
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
-  const points = values.map((v, i) => `${i * 18},${18 - ((v - min) / range) * 18}`).join(' ')
-  return (
-    <svg width="40" height="20" viewBox="-2 -2 40 22" className="text-slate-400" aria-hidden="true">
-      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
-  )
-}
-
+// Grade card, 2026-09-09 redesign: no momentum arrow (removed entirely, see
+// lib/mockRiskQuality.ts -- nothing else consumed it), content centered, and the info
+// affordance moved to a top-right corner button with an actual hover/focus popover
+// (a <ul>, not a native `title` tooltip -- a native tooltip can't render a list at
+// all) styled to read as obviously interactive, which the old plain-circle-with-title
+// treatment didn't. The one place still explaining "why this grade" is this popover;
+// there's no separate reason line under the circle any more.
 function GradeCard({
   label,
   scaleInfo,
   grade,
-  momentum,
-  reason,
-  watch,
+  details,
 }: {
   label: string
   scaleInfo: string
   grade: Grade | null
-  momentum: Momentum
-  reason?: string
-  watch?: boolean
+  details: string[]
 }) {
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-3">
-      <div className="flex items-center justify-between">
-        <p className="flex items-center gap-1 text-xs font-medium text-slate-500">
-          {label}
-          <span
-            className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-slate-300 text-[9px] font-semibold leading-none text-slate-400"
-            title={scaleInfo}
-            aria-label={`What ${label} grades mean: ${scaleInfo}`}
-          >
-            i
-          </span>
-        </p>
-        {grade && (
-          <span
-            className={momentum === 'down' ? 'text-brand' : 'text-slate-400'}
-            aria-label={`Momentum: ${momentum}`}
-            title={`Momentum: ${momentum}`}
-          >
-            <MomentumArrow momentum={momentum} />
-          </span>
-        )}
+    <div className="relative rounded-md border border-slate-200 bg-white p-3 text-center">
+      <div className="group absolute right-2 top-2">
+        <button
+          type="button"
+          className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-white shadow-sm transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          aria-label={`What ${label} grades mean, and why this one`}
+        >
+          i
+        </button>
+        <div
+          role="tooltip"
+          className="invisible absolute right-0 top-full z-30 mt-2 w-64 -translate-y-1 rounded-lg border border-slate-200 bg-white p-3 text-left text-xs text-slate-700 opacity-0 shadow-lg transition duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
+        >
+          <p className="mb-1.5 font-semibold text-slate-900">{scaleInfo}</p>
+          <ul className="list-disc space-y-0.5 pl-4">
+            {details.map((detail, i) => (
+              <li key={i}>{detail}</li>
+            ))}
+          </ul>
+        </div>
       </div>
+
+      <p className="text-xs font-medium text-slate-500">{label}</p>
       <div className="mt-2 flex justify-center">
         {grade ? (
           <span
@@ -144,19 +103,13 @@ function GradeCard({
           </span>
         )}
       </div>
-      {reason && <p className="mt-2 text-xs text-slate-500">{reason}</p>}
       {!grade && <p className="mt-2 text-xs text-slate-500">Not yet graded: Unverified.</p>}
-      {watch && (
-        <span className="mt-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-          Watch: worsening trend
-        </span>
-      )}
     </div>
   )
 }
 
 // Single label-left/value-right row, used throughout Identity & Context and Renewal
-// Economics -- tight py-1 spacing (vs. the old 2-col grid's gap-4) per the new layout.
+// Financials -- tight py-1 spacing (vs. the old 2-col grid's gap-4) per the new layout.
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between border-b border-slate-100 py-1.5 text-sm last:border-0">
@@ -184,16 +137,28 @@ function renewalYears(renewalDate: string | null): { expiringYear: string; renew
   return { expiringYear: String(renewalYear - 1), renewalYear: String(renewalYear) }
 }
 
-// Risk Assessment panel for a Manual Review policy: identity/context + renewal financials
-// side by side, Risk Quality (information-only grade boxes) + Flag Reasons, the detailed
-// flag breakdown, and Historical Performance (mini-metrics + the 3-Yr Loss Ratio table).
+function pct(ratio: number) {
+  return `${Math.round(ratio * 100)}%`
+}
+
+// Risk Evaluation panel (display name; the component/type identifiers this file and
+// lib/mockRiskQuality.ts use -- RiskQualityPanel, renewalEconomics -- are deliberately
+// left as they are, 2026-09-09: renaming them would touch the shape the panel
+// consumes, out of scope for a display-only rename. See SPEC.md S5.4 for this same
+// divergence noted the way renewalEconomics/Renewal Financials already was.
+//
+// Section order, top to bottom (2026-09-09 redesign, supersedes the previous order):
+// title only (no pills) -> the three graded dimension cards (no header/headline) ->
+// Identity & Context / Renewal Financials (two columns) -> Loss Ratio -> Flags Raised
+// (inline) -> Operational Review Flags / Company & Financial Flags. Historical
+// Performance (the old section, and its Policy Metrics block) is gone entirely --
+// Policy Tenure, the one thing in it that wasn't superseded by the Loss Ratio section,
+// moved into Identity & Context.
+//
 // Read-only -- status/assignment/comments/activity live in the separate Underwriter
 // Workspace (components/UnderwriterWorkspace.tsx), reached via the table's expand row.
 // Shared by the standalone /review/manual/[id] page and Renewal Management's
-// "Review" slide-out -- same data, just different surrounding chrome. Both host contexts
-// leave title rendering entirely to this component now, since the rating-explanation
-// subtext has to sit inline next to the "Risk Assessment" title, not floating separately
-// in whatever header bar the host happens to provide.
+// "Review" slide-out -- same data, just different surrounding chrome.
 export default function RiskQualityPanel({ policyId }: { policyId: string }) {
   const [policy, setPolicy] = useState<PolicyDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -244,37 +209,54 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
   }
 
   // Data Confidence and the Operational / Company & Financial grades are derived from
-  // policy's real flag data; Historical Performance and the figures below stay mocked
+  // policy's real flag data; Historical and the loss-ratio figures below stay mocked
   // (see lib/mockRiskQuality.ts for exactly which parts are real vs. still simulated).
   const riskQuality = getRiskQuality(policy)
-  const ratingExplanation = describeRating(riskQuality)
-  const dnbVerified = !policy.dnbNoMatch
   const sectionGradeInputs: Grade[] = [riskQuality.operational.grade, riskQuality.historical.grade]
   if (riskQuality.companyFinancial) sectionGradeInputs.push(riskQuality.companyFinancial.grade)
   const sectionGrade = worstGrade(sectionGradeInputs)
   const { expiringYear, renewalYear } = renewalYears(policy.renewalDate)
-  const threeYearRatios = riskQuality.lossRatioHistory.years.map((y) => y.lossRatio) as [number, number, number]
+  const { oneYear, twoYear, threeYear, allYears } = riskQuality.lossRatioHistory
 
   return (
     <div className="space-y-6">
-      {/* Header -- title only, sized/weighted clearly above the section headers below
-          (those are text-lg/semibold; this is larger and bolder so it reads as the
-          panel-level header, not just another section). The Data Verified/Attention
-          pills live here now too, next to the title, rather than down in Identity &
-          Context -- they're policy-level status, not specific to that one section.
-          The rating explanation sits next to the "Risk Quality" section header
-          instead, one level down from the panel title. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-bold text-slate-900">Risk Assessment</h1>
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${verifiedPillClasses(dnbVerified)}`}>
-            {dnbVerified ? 'Data Verified (D&B match found)' : 'Data Not Verified (D&B No Match)'}
-          </span>
-          <SeverityBadge attention={policy.attention} />
-        </div>
+      {/* Header -- title only. The Data Verified/Attention pills that used to live
+          here were removed 2026-09-09; the D&B-no-match/inactive explanation that was
+          the pill's only real purpose now lives in the Company & Financial card's own
+          tooltip (see GradeCard/unverifiedCompanyFinancialDetails), where it belongs
+          next to the grade it actually affects. */}
+      <div className="border-b border-slate-200 pb-4">
+        <h1 className="text-2xl font-bold text-slate-900">Risk Evaluation</h1>
       </div>
 
-      {/* Two-column top section: Identity & Context (left) / Renewal Financials (right). */}
+      {/* The three graded dimension cards -- no section header, no headline, promoted
+          to the very top of the panel body (2026-09-09). Still wrapped in the
+          worst-of-three colored box (unchanged since 2026-07-22): one C anywhere
+          turns the whole box red even if the other two are A. */}
+      <section className={`rounded-lg border p-4 shadow-sm ${riskQualitySectionClasses(sectionGrade)}`}>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <GradeCard
+            label="Operational"
+            scaleInfo="A = no Stage 1 flags fired. B = exactly one non-critical flag. C = Open Claim, Premium Unpaid, or 2+ flags fired."
+            grade={riskQuality.operational.grade}
+            details={riskQuality.operational.details}
+          />
+          <GradeCard
+            label="Company & Financial"
+            scaleInfo="A = no Stage 2 flags fired. B = exactly one flag. C = two or more of D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company."
+            grade={riskQuality.companyFinancial?.grade ?? null}
+            details={riskQuality.companyFinancial?.details ?? unverifiedCompanyFinancialDetails(policy)}
+          />
+          <GradeCard
+            label="Historical Performance"
+            scaleInfo="Reflects historical claims performance across all available years (the All Years column in Loss Ratio, below)."
+            grade={riskQuality.historical.grade}
+            details={riskQuality.historical.details}
+          />
+        </div>
+      </section>
+
+      {/* Two-column section: Identity & Context (left) / Renewal Financials (right). */}
       <div className="grid gap-8 border-b border-slate-200 pb-6 md:grid-cols-2">
         <section>
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
@@ -284,6 +266,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
             <InfoRow label="Customer Name" value={policy.customerName} />
             <InfoRow label="Broker Name" value={policy.brokerName} />
             <InfoRow label="Current Term End Date" value={formatDate(policy.renewalDate)} />
+            <InfoRow label="Policy Tenure" value={`${riskQuality.policyTenureYears} year${riskQuality.policyTenureYears === 1 ? '' : 's'}`} />
           </dl>
         </section>
 
@@ -295,7 +278,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
               value={`${formatCurrency(riskQuality.renewalEconomics.expiringPremium, policy.currency)} (${expiringYear})`}
             />
             <InfoRow
-              label="Renewal Proposed Premium"
+              label="Proposed Premium"
               value={`${formatCurrency(riskQuality.renewalEconomics.renewalPremium, policy.currency)} (${renewalYear})`}
             />
             <InfoRow
@@ -308,157 +291,106 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
               }
             />
           </dl>
-          <div className="mt-4">
-            <p className="text-sm font-semibold text-slate-900">3 Year Loss Ratio Trend</p>
-            <div className="mt-1">
-              <Sparkline values={threeYearRatios} />
-            </div>
-          </div>
         </section>
       </div>
 
-      {/* Risk Quality -- information-only (no recommendation/suggested action here
-          anymore; the rating explanation sits under the header). Data Confidence and
-          Operational/Company & Financial grades are derived from real flag data;
-          Historical Performance and the figures below are still mocked. The header
-          itself is unboxed, matching Identity & Context / Renewal Financials / Historical
-          Performance above and below -- only the grade cards + Flag Reasons stay boxed,
-          since that's the part the worst-of-three grade coloring is actually about. */}
-      <section>
-        <h2 className="mb-1 text-lg font-semibold text-slate-900">Risk Quality</h2>
-        <p className="mb-4 text-sm text-slate-500">{ratingExplanation}</p>
-
-        <div className={`rounded-lg border p-4 shadow-sm ${riskQualitySectionClasses(sectionGrade)}`}>
-          {!riskQuality.verified && (
-            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              Data confidence is Unverified (D&amp;B No Match or D&amp;B Status Inactive), so Company &amp; Financial
-              grading is not yet calculated.
-            </p>
-          )}
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <GradeCard
-              label="Operational"
-              scaleInfo="A = no Stage 1 flags fired. B = exactly one non-critical flag. C = Open Claim, Premium Unpaid, or 2+ flags fired."
-              grade={riskQuality.operational.grade}
-              momentum={riskQuality.operational.momentum}
-              reason={riskQuality.operational.reason}
-            />
-            <GradeCard
-              label="Company & Financial"
-              scaleInfo="A = no Stage 2 flags fired. B = exactly one flag. C = two or more of D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company."
-              grade={riskQuality.companyFinancial?.grade ?? null}
-              momentum={riskQuality.companyFinancial?.momentum ?? 'stable'}
-              reason={riskQuality.companyFinancial?.reason}
-            />
-            {/* Renamed from "Historical" -- shares its exact name with the Historical
-                Performance section further down (the one with the loss ratio table).
-                That's intentional: this is the grade card, that's the section. Its
-                sparkline moved up to Renewal Financials, so no `history` prop here. */}
-            <GradeCard
-              label="Historical Performance"
-              scaleInfo="Reflects historical claims performance. A persistent loss-ratio increase raises a Watch flag even before the letter grade changes."
-              grade={riskQuality.historical.grade}
-              momentum={riskQuality.historical.momentum}
-              reason={riskQuality.historical.reason}
-              watch={riskQuality.trendWatch}
-            />
-          </div>
-
-          {/* Flag Reasons, promoted up from below the flag breakdown -- it now
-              summarizes what's coming before the detailed Y/N list, not after it. */}
-          <div className="mt-6">
-            <dt className="text-sm text-slate-500">Flag Reasons</dt>
-            <dd className="mt-1 text-sm font-medium text-slate-900">{policy.flagReasons || EMPTY_VALUE}</dd>
-          </div>
-        </div>
-      </section>
-
-      {/* Detailed flag breakdown -- renamed to match the grade dimension names above
-          (Operational, Company & Financial). The only place the four attention-only
-          signals (Data Incomplete, D&B Predictor Concern, D&B Significant Event, D&B
-          Listed Status Unknown) are visible, since those don't get their own Y/N row. */}
+      {/* Loss Ratio -- promoted to its own standalone section (2026-09-09), directly
+          below Identity & Context / Renewal Financials. Cumulative nested windows
+          (1/2/3/All Years), not oldest->newest single years -- see LossRatioTable. */}
       <section className="border-b border-slate-200 pb-6">
-        <FlagDetailPanel item={policy} stage1Heading="Operational Review Flags" stage2Heading="Company & Financial Flags" />
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Loss Ratio</h2>
+        <LossRatioTable oneYear={oneYear} twoYear={twoYear} threeYear={threeYear} allYears={allYears} currency={policy.currency} />
       </section>
 
-      {/* Historical Performance (the section) -- the 3-Yr Loss Ratio table is the
-          primary content, built straight from lossRatioHistory (same data the
-          sparkline above reads, so the two can never contradict each other). Claim
-          frequency/tenure aren't covered by the table, so they get their own
-          matching bordered block (same border-slate-200/white/rounded-md treatment as
-          the table) and sub-header, rather than trailing off underneath as an
-          afterthought -- still plain InfoRows inside, just framed to read as a
-          parallel block instead of a lesser one. Loss ratio/Claims paid/Cumulative
-          premium were dropped entirely since the table now shows those same figures
-          (plus two more years) more completely. */}
+      {/* Flags Raised -- renamed from "Flag Reasons" (2026-09-09), and rendered
+          inline with its own header rather than stacked dt/dd below it. */}
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Historical Performance</h2>
-        <p className="mb-1 text-sm font-semibold text-slate-900">3-Yr Loss Ratio</p>
-        <LossRatioTable history={riskQuality.lossRatioHistory} currency={policy.currency} />
-        <p className="mb-1 mt-4 text-sm font-semibold text-slate-900">Policy Metrics</p>
-        <dl className="rounded-md border border-slate-200 bg-white p-4">
-          <InfoRow label="Claim Frequency" value={`${riskQuality.historicalPerformance.claimFrequency.toFixed(1)}/yr`} />
-          <InfoRow label="Tenure" value={`${riskQuality.historicalPerformance.tenureYears} yrs`} />
-        </dl>
+        <p className="text-sm">
+          <span className="font-semibold text-slate-900">Flags Raised: </span>
+          <span className="text-slate-700">{policy.flagReasons || EMPTY_VALUE}</span>
+        </p>
+      </section>
+
+      {/* Detailed flag breakdown -- unchanged in substance, just sitting lower in the
+          panel now that Flags Raised/Loss Ratio moved above it. */}
+      <section>
+        <FlagDetailPanel item={policy} stage1Heading="Operational Review Flags" stage2Heading="Company & Financial Flags" />
       </section>
     </div>
   )
 }
 
-// The visible 3-Yr Loss Ratio table: Year / Gross Premium Written / Claims Incurred /
-// Loss Ratio (highlighted) rows, oldest -> newest year columns plus a 3-Yr Avg column.
-// Reads lossRatioHistory directly -- no separate math here, so this can never disagree
-// with the Renewal Financials sparkline or the Historical Performance grade card, all
-// three of which trace back to the same lib/mockRiskQuality.ts data.
+// The Loss Ratio table: four cumulative windows (1 Year / 2 Years / 3 Years / All
+// Years, all "(Earned)"), narrowest to widest, left to right. Rows: Loss Ratio /
+// Claims Incurred / Claims Frequency / Premium Earned / Premium Written. Loss Ratio is
+// always claimsIncurred/premiumEarned for that column's own cumulative figures (see
+// lib/mockRiskQuality.ts's buildWindow) -- never computed independently here.
 function LossRatioTable({
-  history,
+  oneYear,
+  twoYear,
+  threeYear,
+  allYears,
   currency,
 }: {
-  history: ReturnType<typeof getRiskQuality>['lossRatioHistory']
+  oneYear: ReturnType<typeof getRiskQuality>['lossRatioHistory']['oneYear']
+  twoYear: ReturnType<typeof getRiskQuality>['lossRatioHistory']['twoYear']
+  threeYear: ReturnType<typeof getRiskQuality>['lossRatioHistory']['threeYear']
+  allYears: ReturnType<typeof getRiskQuality>['lossRatioHistory']['allYears']
   currency: string | null
 }) {
-  const { years, avgGrossPremiumWritten, avgClaimsIncurred, threeYearLossRatio } = history
+  const windows = [oneYear, twoYear, threeYear, allYears]
 
   return (
     <div className="overflow-x-auto rounded-md border border-slate-200">
       <table className="w-full text-sm">
         <tbody className="divide-y divide-slate-100">
           <tr className="bg-slate-50">
-            <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-500">Year</td>
-            {years.map((y) => (
-              <td key={y.year} className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-900">
-                {y.year}
+            <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-500"></td>
+            {windows.map((w) => (
+              <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-900">
+                {w.label}
               </td>
             ))}
-            <td className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-900">3-Yr Avg</td>
-          </tr>
-          <tr>
-            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Gross Premium Written</td>
-            {years.map((y) => (
-              <td key={y.year} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
-                {formatCompactCurrency(y.grossPremiumWritten, currency)}
-              </td>
-            ))}
-            <td className="whitespace-nowrap px-4 py-2 text-right text-slate-900">{formatCompactCurrency(avgGrossPremiumWritten, currency)}</td>
-          </tr>
-          <tr>
-            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Claims Incurred</td>
-            {years.map((y) => (
-              <td key={y.year} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
-                {formatCompactCurrency(y.claimsIncurred, currency)}
-              </td>
-            ))}
-            <td className="whitespace-nowrap px-4 py-2 text-right text-slate-900">{formatCompactCurrency(avgClaimsIncurred, currency)}</td>
           </tr>
           <tr className="bg-slate-100 font-semibold text-slate-900">
             <td className="whitespace-nowrap px-4 py-2">Loss Ratio</td>
-            {years.map((y) => (
-              <td key={y.year} className="whitespace-nowrap px-4 py-2 text-right">
-                {Math.round(y.lossRatio * 100)}%
+            {windows.map((w) => (
+              <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right">
+                {pct(w.lossRatio)}
               </td>
             ))}
-            <td className="whitespace-nowrap px-4 py-2 text-right">{Math.round(threeYearLossRatio * 100)}%</td>
+          </tr>
+          <tr>
+            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Claims Incurred</td>
+            {windows.map((w) => (
+              <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
+                {formatCompactCurrency(w.claimsIncurred, currency)}
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Claims Frequency</td>
+            {windows.map((w) => (
+              <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
+                {w.claimsCount}
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Premium Earned</td>
+            {windows.map((w) => (
+              <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
+                {formatCompactCurrency(w.premiumEarned, currency)}
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Premium Written</td>
+            {windows.map((w) => (
+              <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
+                {formatCompactCurrency(w.premiumWritten, currency)}
+              </td>
+            ))}
           </tr>
         </tbody>
       </table>

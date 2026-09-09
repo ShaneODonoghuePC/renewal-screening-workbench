@@ -1,7 +1,11 @@
 export type Grade = 'A' | 'B' | 'C'
-export type Momentum = 'stable' | 'up' | 'down'
 
-export type DimensionGrade = { grade: Grade; momentum: Momentum; reason: string }
+// `details` is a list of short lines for the card's tooltip -- the specific fired
+// flags for Operational/Company & Financial, or a loss-ratio summary line for
+// Historical Performance. Rendered as a <ul>, never comma-joined (2026-09-09 --
+// momentum was removed from this type entirely; nothing else in the app consumed it,
+// so it isn't kept around as a dead field).
+export type DimensionGrade = { grade: Grade; details: string[] }
 
 export type RiskQualityInput = {
   id: string
@@ -19,28 +23,37 @@ export type RiskQualityInput = {
   dnbListedCompany: boolean
 }
 
-// One year of the 3-Yr Loss Ratio table (oldest -> newest).
+// One year of loss-ratio history, oldest -> newest. The newest year is the current,
+// in-progress policy year (the term ending at renewalDate) -- premiumEarned for it is
+// pro-rated by months elapsed; every earlier year is complete, so its premiumEarned
+// equals premiumWritten exactly.
 export type LossRatioYear = {
   year: number
-  grossPremiumWritten: number
+  premiumWritten: number
+  premiumEarned: number
   claimsIncurred: number
-  // Always claimsIncurred / grossPremiumWritten for this exact year -- recomputed from
-  // the (rounded) year figures rather than stored as an independent draw, so it can never
-  // drift from what the two figures above actually divide out to.
+  claimsCount: number
+}
+
+// A cumulative nested window over the trailing N years (1/2/3/All), narrowest to
+// widest. lossRatio is always claimsIncurred / premiumEarned for THIS window's own
+// cumulative figures -- recomputed from the two rows it sits above, never an
+// independent draw, so it can never drift from what they divide out to.
+export type LossRatioWindow = {
+  label: string
+  premiumWritten: number
+  premiumEarned: number
+  claimsIncurred: number
+  claimsCount: number
   lossRatio: number
 }
 
 export type LossRatioHistory = {
-  years: [LossRatioYear, LossRatioYear, LossRatioYear]
-  // Simple average across the three years, per the table spec.
-  avgGrossPremiumWritten: number
-  avgClaimsIncurred: number
-  // Exposure-weighted (total Claims Incurred / total Gross Premium Written across all
-  // three years) -- NOT a plain average of the three yearly ratios. This is also what
-  // the Historical grade is now based on, and what any other "current loss ratio"
-  // display in the app should read from (see historicalPerformance.lossRatio below,
-  // which is this same history's most recent year).
-  threeYearLossRatio: number
+  years: LossRatioYear[] // 5, oldest -> newest
+  oneYear: LossRatioWindow
+  twoYear: LossRatioWindow
+  threeYear: LossRatioWindow
+  allYears: LossRatioWindow
 }
 
 export type RiskQuality = {
@@ -49,27 +62,16 @@ export type RiskQuality = {
   // null when Unverified — Company & Financial is only calculated once Data Confidence
   // is Verified, same gating as the real methodology this prototypes.
   companyFinancial: DimensionGrade | null
-  // Still mocked: no real prior-cycle claims trajectory data exists yet. Grade and
-  // momentum are both now derived from lossRatioHistory (see below) rather than an
-  // independent draw -- single source of truth for the Historical dimension.
+  // Still mocked: no real prior-cycle claims trajectory data exists yet.
   historical: DimensionGrade
-  // The data foundation for the 3-Yr Loss Ratio table -- also what the Historical grade
-  // and momentum are computed from.
+  // The data foundation for the Loss Ratio section's cumulative-window table -- also
+  // what the Historical grade (above) is computed from (the All Years window).
   lossRatioHistory: LossRatioHistory
-  // 3-cycle loss-ratio trend (oldest -> newest) taken straight from lossRatioHistory's
-  // three years -- drives the Historical card's sparkline and Watch tag.
-  lossRatioTrend: [number, number, number]
-  trendWatch: boolean
-  historicalPerformance: {
-    // Same value as lossRatioHistory's most recent year -- the single source of truth
-    // for "current loss ratio" everywhere in the app (see RiskQualityPanel's Loss ratio
-    // card, which reads this field rather than an independent figure).
-    lossRatio: number
-    claimsPaid: number
-    cumulativePremium: number
-    claimFrequency: number
-    tenureYears: number
-  }
+  // Policy tenure -- the last thing the old Historical Performance section carried
+  // once its other figures (loss ratio/claims paid/cumulative premium/claim
+  // frequency) were superseded by the Loss Ratio section, 2026-09-09. Lives in
+  // Identity & Context now, not its own section.
+  policyTenureYears: number
   renewalEconomics: {
     expiringPremium: number
     renewalPremium: number
@@ -78,6 +80,11 @@ export type RiskQuality = {
 }
 
 // Data Confidence: Verified unless D&B couldn't match the company or shows it inactive.
+// This is the ONLY definition of "verified" in the app (2026-09-09) -- a separate,
+// narrower Data-Verified-pill rule (dnbNoMatch alone) existed briefly in the UI layer
+// and was removed along with the pill itself; computeDataConfidence's two-flag rule is
+// what the Company & Financial grade gate has always used, and is now the single source
+// of truth for what "Unverified" means anywhere in this panel.
 export function computeDataConfidence(policy: RiskQualityInput): boolean {
   return !policy.dnbNoMatch && !policy.dnbStatusInactive
 }
@@ -93,7 +100,7 @@ export function computeOperationalGrade(policy: RiskQualityInput): Grade {
 }
 
 // Company & Financial grade, from the real Stage 2 flags -- D&B Listed Company counts
-// alongside the other three now (same tier, same threshold rule), derived straight from
+// alongside the other three (same tier, same threshold rule), derived straight from
 // the four boolean fields rather than the stored stage2FlagCount column, which predates
 // this field counting here and would undercount.
 export function computeCompanyFinancialGrade(policy: RiskQualityInput): Grade {
@@ -104,37 +111,55 @@ export function computeCompanyFinancialGrade(policy: RiskQualityInput): Grade {
   return 'A'
 }
 
-// One-line "why" for the Operational grade, naming the real fired flags (same labels
-// used in FlagDetailPanel/FlagRow, so this never contradicts the flags shown elsewhere).
-function operationalReason(policy: RiskQualityInput): string {
+// Fired-flag labels for the Operational grade's tooltip, as a list -- not a
+// comma-joined string (2026-09-09). Same labels used in FlagDetailPanel/FlagRow, so
+// this never contradicts the flags shown elsewhere.
+function operationalDetails(policy: RiskQualityInput): string[] {
   const fired: string[] = []
   if (policy.openClaim) fired.push('Open Claim')
   if (policy.premiumUnpaid) fired.push('Premium Unpaid')
   if (policy.renewalTypeManual) fired.push('Renewal Type Manual')
   if (policy.systemListedCompany) fired.push('System Listed Company')
-  return fired.length > 0 ? fired.join(', ') : 'no flags raised'
+  return fired.length > 0 ? fired : ['No flags fired']
 }
 
-// One-line "why" for the Company & Financial grade, naming the real fired flags.
-function companyFinancialReason(policy: RiskQualityInput): string {
+// Fired-flag labels for the Company & Financial grade's tooltip. When Unverified, the
+// grade itself is null and this is never called for the fired-flag case -- see
+// companyFinancialUnverifiedDetails below for what the tooltip shows instead. An
+// unexplained N/A is not acceptable now that the Data Verified pill (the only other
+// hint) is gone (2026-09-09) -- the explanation has to live here.
+function companyFinancialDetails(policy: RiskQualityInput): string[] {
   const fired: string[] = []
   if (policy.dnbRatingBelowA) fired.push('D&B Rating Below A')
   if (policy.latestProfitNegative) fired.push('Latest Profit Negative')
   if (policy.assetsMovedSignificant) fired.push('Assets Moved >25% YoY')
   if (policy.dnbListedCompany) fired.push('D&B Listed Company')
-  return fired.length > 0 ? fired.join(', ') : 'no flags raised'
+  return fired.length > 0 ? fired : ['No flags fired']
+}
+
+// Plain-language explanation for why Company & Financial is N/A, naming the specific
+// D&B condition(s) responsible -- computeDataConfidence's own two-flag rule, so this
+// can never disagree with the gate that actually suppressed the grade.
+function companyFinancialUnverifiedDetails(policy: RiskQualityInput): string[] {
+  if (policy.dnbNoMatch && policy.dnbStatusInactive) {
+    return ['Not graded: D&B returned no match for this company, and shows it as inactive.']
+  }
+  if (policy.dnbNoMatch) {
+    return ['Not graded: D&B returned no match for this company.']
+  }
+  return ['Not graded: D&B shows this company as inactive.']
 }
 
 // Historical grade, thresholded off a loss ratio -- the same way
 // computeOperationalGrade/computeCompanyFinancialGrade threshold off real flag counts.
-// Fed the 3-year exposure-weighted aggregate loss ratio (LossRatioHistory.threeYearLossRatio),
-// not a single year's figure -- one set of bands, reused wherever a loss ratio needs a grade.
+// Fed the All Years cumulative window's loss ratio (LossRatioHistory.allYears.lossRatio),
+// the widest available window, not a single year's figure.
 // Thresholds are an assumption (mid-50s to low-60s loss ratio is a normal/healthy range
 // for commercial P&C), matched to the shipped distribution (mean ~55%, SD ~17pt) so the
 // split lands roughly where A/B/C should for this dataset -- easy to retune later.
 export function computeHistoricalGrade(lossRatio: number): Grade {
   // Threshold on the rounded percentage rather than the raw fraction, so the grade band
-  // can never disagree with the displayed Loss ratio % right at a boundary (e.g. a raw
+  // can never disagree with the displayed Loss Ratio % right at a boundary (e.g. a raw
   // 54.96% displaying as "55%" while still grading as if it were under the B cutoff).
   const pct = Math.round(lossRatio * 100)
   if (pct > 75) return 'C'
@@ -142,25 +167,12 @@ export function computeHistoricalGrade(lossRatio: number): Grade {
   return 'A'
 }
 
-// Historical momentum, derived from the actual year-over-year movement across the same
-// three years as the Loss Ratio table (oldest vs. newest) -- rather than an independent
-// random pick -- so the arrow, the sparkline, and the table can never visibly disagree.
-// Higher loss ratio is worse, so a rising trend is "down" (attention-worthy) and a
-// falling one is "up" (improving) -- same up/down semantics as the other two dimensions'
-// arrows.
-function computeHistoricalMomentum(trend: [number, number, number]): Momentum {
-  const deltaPts = Math.round((trend[2] - trend[0]) * 100)
-  if (deltaPts >= 3) return 'down'
-  if (deltaPts <= -3) return 'up'
-  return 'stable'
-}
-
-// One-line "why" for the Historical grade, tied to the mocked loss-ratio trend.
-function historicalReason(grade: Grade, trend: [number, number, number]): string {
-  const deltaPts = Math.round((trend[2] - trend[0]) * 100)
-  const pct = Math.round(trend[2] * 100)
-  const direction = deltaPts >= 3 ? `trending up to ${pct}%` : deltaPts <= -3 ? `trending down to ${pct}%` : `steady around ${pct}%`
-  return `${grade}: loss ratio ${direction}`
+// One-line tooltip detail for the Historical grade, tied to the All Years window --
+// still a list (of one line) for the same uniform-tooltip-rendering reason as the
+// other two dimensions, even though there's only ever one line to show here.
+function historicalDetails(allYears: LossRatioWindow): string[] {
+  const pct = Math.round(allYears.lossRatio * 100)
+  return [`All-years loss ratio: ${pct}%`]
 }
 
 // FNV-1a string hash -> deterministic per-policy seed, so the still-mocked fields below
@@ -196,71 +208,88 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
-const MOMENTA: Momentum[] = ['stable', 'stable', 'stable', 'up', 'down']
+const LOSS_RATIO_HISTORY_YEARS = 5
 
-function pick<T>(rand: () => number, arr: T[]): T {
-  return arr[Math.floor(rand() * arr.length)]
-}
-
-// Exposure-weighted loss ratio across N years (total Claims Incurred / total Gross
-// Premium Written) -- the actuarially correct way to aggregate a multi-year loss ratio,
-// as opposed to a plain average of the yearly ratios. Exported so any future multi-year
-// aggregation reuses this instead of reimplementing plain-average math that would
-// silently disagree with it.
-export function computeAggregateLossRatio(years: { grossPremiumWritten: number; claimsIncurred: number }[]): number {
-  const totalGpw = years.reduce((sum, y) => sum + y.grossPremiumWritten, 0)
-  const totalClaims = years.reduce((sum, y) => sum + y.claimsIncurred, 0)
-  return totalGpw > 0 ? totalClaims / totalGpw : 0
-}
-
-// The most recently *completed* policy year -- one year before the upcoming renewal
-// date's year, same convention as the Renewal financials section's expiringYear
-// (RiskQualityPanel's renewalYears()). Historical claims experience is necessarily for
-// years that have already finished, not the year about to be renewed into.
-function mostRecentCompletedYear(renewalDate: string | null): number {
-  const fallbackYear = 2025
+// The current, in-progress policy year -- the calendar year the renewal date itself
+// falls in (the term ending at renewalDate is the one running right now). Distinct
+// from the four YEARS BEFORE it, all of which are complete.
+function currentPolicyYear(renewalDate: string | null): number {
+  const fallbackYear = 2026
   if (!renewalDate) return fallbackYear
   const date = new Date(`${renewalDate}T00:00:00Z`)
   if (Number.isNaN(date.getTime())) return fallbackYear
-  return date.getUTCFullYear() - 1
+  return date.getUTCFullYear()
 }
 
-// Builds the 3-year Loss Ratio table's data (oldest -> newest), pinning the newest year
-// to the policy's existing cumulativePremium/claimsPaid so those already-displayed
-// figures are preserved exactly, not replaced. The two prior years are synthesized
-// backward: a plausible YoY premium trend for Gross Premium Written, and a bell-curve
-// walk for the loss ratio (same shape as the old lossRatioTrend), with each year's
-// Claims Incurred then derived from that year's own GPW and ratio -- so every year's
-// stated loss ratio is exactly claimsIncurred / grossPremiumWritten by construction,
-// never an independent figure that could drift from what the two numbers divide out to.
-function buildLossRatioHistory(rand: () => number, renewalDate: string | null, gpwYear3: number, claimsYear3: number): LossRatioHistory {
-  const newestYear = mostRecentCompletedYear(renewalDate)
+// Builds 5 years of loss-ratio history (oldest -> newest), pinning the newest year's
+// premiumWritten/claimsIncurred to the same seeded figures the panel has always used
+// for "this cycle" (see getRiskQuality below) so nothing already-visible silently
+// changes value -- only pro-rated for premiumEarned, per the current-year rule.
+// The four prior years are synthesized backward from there: a plausible YoY premium
+// trend for premiumWritten, and a bell-curve walk for the loss ratio (same shape the
+// old 3-year version used, just carried one step further back each time), with each
+// year's claimsIncurred then derived from that year's own premiumWritten and ratio --
+// so every year's own figures are internally consistent by construction.
+function buildLossRatioHistory(
+  rand: () => number,
+  renewalDate: string | null,
+  currentPremiumWritten: number,
+  currentClaimsIncurred: number
+): LossRatioHistory {
+  const newestYear = currentPolicyYear(renewalDate)
+  // How far into the current policy year we are -- synthesized rather than read off
+  // the real wall-clock date, so this stays a stable, per-policy-seeded figure like
+  // everything else here (not something that would silently drift day to day).
+  const monthsElapsed = 1 + Math.floor(rand() * 12)
 
-  // Same range/shape as renewalEconomics' movementPercent below: roughly -10%..+20% YoY.
-  const growth12 = Math.round((rand() * 30 - 10) * 10) / 10
-  const growth23 = Math.round((rand() * 30 - 10) * 10) / 10
-  const gpwYear2 = Math.round(gpwYear3 / (1 + growth23 / 100))
-  const gpwYear1 = Math.round(gpwYear2 / (1 + growth12 / 100))
+  // Built newest -> oldest (index 0 = current year), reversed to oldest -> newest below.
+  const written = [currentPremiumWritten]
+  const claims = [currentClaimsIncurred]
+  for (let i = 1; i < LOSS_RATIO_HISTORY_YEARS; i++) {
+    const growth = Math.round((rand() * 30 - 10) * 10) / 10 // roughly -10%..+20% YoY
+    const priorWritten = Math.round(written[i - 1] / (1 + growth / 100))
+    written.push(priorWritten)
 
-  const ratioYear3 = claimsYear3 / gpwYear3
-  const stepA = (rand() - 0.5) * 0.24
-  const stepB = (rand() - 0.5) * 0.24
-  const rawRatioYear2 = clamp(ratioYear3 - stepB, 0.1, 1.4)
-  const rawRatioYear1 = clamp(rawRatioYear2 - stepA, 0.1, 1.4)
-  const claimsYear2 = Math.round(rawRatioYear2 * gpwYear2)
-  const claimsYear1 = Math.round(rawRatioYear1 * gpwYear1)
+    const priorRatio = clamp(claims[i - 1] / written[i - 1] - (rand() - 0.5) * 0.24, 0.1, 1.4)
+    claims.push(Math.round(priorRatio * priorWritten))
+  }
+  written.reverse()
+  claims.reverse()
 
-  const years: [LossRatioYear, LossRatioYear, LossRatioYear] = [
-    { year: newestYear - 2, grossPremiumWritten: gpwYear1, claimsIncurred: claimsYear1, lossRatio: claimsYear1 / gpwYear1 },
-    { year: newestYear - 1, grossPremiumWritten: gpwYear2, claimsIncurred: claimsYear2, lossRatio: claimsYear2 / gpwYear2 },
-    { year: newestYear, grossPremiumWritten: gpwYear3, claimsIncurred: claimsYear3, lossRatio: ratioYear3 },
-  ]
+  const years: LossRatioYear[] = written.map((premiumWritten, i) => {
+    const isCurrent = i === LOSS_RATIO_HISTORY_YEARS - 1
+    const premiumEarned = isCurrent ? Math.round((premiumWritten * monthsElapsed) / 12) : premiumWritten
+    return {
+      year: newestYear - (LOSS_RATIO_HISTORY_YEARS - 1 - i),
+      premiumWritten,
+      premiumEarned,
+      claimsIncurred: claims[i],
+      claimsCount: 1 + Math.floor(rand() * 7),
+    }
+  })
+
+  function buildWindow(count: number, label: string): LossRatioWindow {
+    const slice = years.slice(years.length - count)
+    const premiumWritten = slice.reduce((sum, y) => sum + y.premiumWritten, 0)
+    const premiumEarned = slice.reduce((sum, y) => sum + y.premiumEarned, 0)
+    const claimsIncurred = slice.reduce((sum, y) => sum + y.claimsIncurred, 0)
+    const claimsCount = slice.reduce((sum, y) => sum + y.claimsCount, 0)
+    return {
+      label,
+      premiumWritten,
+      premiumEarned,
+      claimsIncurred,
+      claimsCount,
+      lossRatio: premiumEarned > 0 ? claimsIncurred / premiumEarned : 0,
+    }
+  }
 
   return {
     years,
-    avgGrossPremiumWritten: years.reduce((sum, y) => sum + y.grossPremiumWritten, 0) / 3,
-    avgClaimsIncurred: years.reduce((sum, y) => sum + y.claimsIncurred, 0) / 3,
-    threeYearLossRatio: computeAggregateLossRatio(years),
+    oneYear: buildWindow(1, '1 Year (Earned)'),
+    twoYear: buildWindow(2, '2 Years (Earned)'),
+    threeYear: buildWindow(3, '3 Years (Earned)'),
+    allYears: buildWindow(LOSS_RATIO_HISTORY_YEARS, 'All Years (Earned)'),
   }
 }
 
@@ -268,54 +297,31 @@ function buildLossRatioHistory(rand: () => number, renewalDate: string | null, g
 // Operational / Company & Financial grades are computed from the policy's real flag
 // data (see computeDataConfidence / computeOperationalGrade / computeCompanyFinancialGrade
 // above). Everything else here has no real data source yet, so it's mocked, deterministic
-// per policy id: momentum for all three dimensions, the Historical grade and its
-// loss-ratio trend, and the Historical performance / renewal financials figures.
+// per policy id: the Historical grade and its loss-ratio history, policy tenure, and the
+// renewal financials figures.
 export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   const rand = mulberry32(hashSeed(policy.id))
 
   const verified = computeDataConfidence(policy)
   const operationalGrade = computeOperationalGrade(policy)
-  const operationalMomentum = pick(rand, MOMENTA)
-  const companyFinancialMomentum = pick(rand, MOMENTA)
   const companyFinancialGrade = verified ? computeCompanyFinancialGrade(policy) : null
 
-  // Seed loss ratio, from a bell curve centered on a plausible commercial P&C target
-  // (60% mean, 15pt SD -- an assumption, easy to retune since this is mocked), clamped to
-  // a realistic range. claimsPaid is derived from it so cumulativePremium/claimsPaid stay
-  // internally consistent -- these two figures become the 3-Yr Loss Ratio table's newest
-  // (most recent) year, unchanged from what's already displayed elsewhere in the app.
+  // Seed figures for the current (newest) loss-ratio-history year, from a bell curve
+  // centered on a plausible commercial P&C target (60% mean, 15pt SD -- an assumption,
+  // easy to retune since this is mocked), clamped to a realistic range.
   const seedLossRatio = clamp(randNormal(rand, 0.6, 0.15), 0.15, 1.3)
-  const cumulativePremium = Math.round(50000 + rand() * 200000)
-  const claimsPaid = Math.round(seedLossRatio * cumulativePremium)
-  const claimFrequency = Math.round(rand() * 30) / 10
-  const tenureYears = 1 + Math.floor(rand() * 12)
+  const currentPremiumWritten = Math.round(50000 + rand() * 200000)
+  const currentClaimsIncurred = Math.round(seedLossRatio * currentPremiumWritten)
+  const policyTenureYears = 1 + Math.floor(rand() * 12)
 
-  // The 3-Yr Loss Ratio table's data foundation -- single source of truth for the
-  // Historical grade/momentum below and for "current loss ratio" wherever it's displayed
-  // (historicalPerformance.lossRatio, set from this same history's newest year).
-  const lossRatioHistory = buildLossRatioHistory(rand, policy.renewalDate, cumulativePremium, claimsPaid)
-  const lossRatio = lossRatioHistory.years[2].lossRatio
-  const lossRatioTrend: [number, number, number] = [
-    lossRatioHistory.years[0].lossRatio,
-    lossRatioHistory.years[1].lossRatio,
-    lossRatioHistory.years[2].lossRatio,
-  ]
-
-  // Grade now comes from the 3-year exposure-weighted aggregate, not a single year's
-  // ratio; momentum comes from the actual year-over-year movement across those same
-  // three years -- both replacing the old independent trend/grade source.
-  const historicalGrade = computeHistoricalGrade(lossRatioHistory.threeYearLossRatio)
-  const historicalMomentum = computeHistoricalMomentum(lossRatioTrend)
-
-  const worsening = lossRatioTrend[2] > lossRatioTrend[1] && lossRatioTrend[1] > lossRatioTrend[0]
-  // Watch: the 3-cycle loss-ratio trend is worsening but that hasn't (yet) moved the grade this cycle.
-  const trendWatch = worsening && historicalMomentum === 'stable'
+  const lossRatioHistory = buildLossRatioHistory(rand, policy.renewalDate, currentPremiumWritten, currentClaimsIncurred)
+  const historicalGrade = computeHistoricalGrade(lossRatioHistory.allYears.lossRatio)
 
   // Renewal financials: the renewal-year figure is the same real premium shown in
   // Identity & Context (policy.premium), not an independently generated number -- these
   // used to be two disconnected values that happened to both be called "premium." The
   // expiring-year figure is derived by reversing the synthesized movement percentage off
-  // that real base, the same way lossRatio/claimsPaid were made internally consistent above.
+  // that real base, the same way currentClaimsIncurred was made internally consistent above.
   const movementPercent = Math.round((rand() * 30 - 10) * 10) / 10
   // Not rounded when sourced from the real policy.premium -- rounding here would make
   // this figure and Identity & Context's Premium field merely *close*, not identical,
@@ -328,64 +334,28 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
     verified,
     operational: {
       grade: operationalGrade,
-      momentum: operationalMomentum,
-      reason: `${operationalGrade}: ${operationalReason(policy)}`,
+      details: operationalDetails(policy),
     },
     companyFinancial: companyFinancialGrade
       ? {
           grade: companyFinancialGrade,
-          momentum: companyFinancialMomentum,
-          reason: `${companyFinancialGrade}: ${companyFinancialReason(policy)}`,
+          details: companyFinancialDetails(policy),
         }
       : null,
     historical: {
       grade: historicalGrade,
-      momentum: historicalMomentum,
-      reason: historicalReason(historicalGrade, lossRatioTrend),
+      details: historicalDetails(lossRatioHistory.allYears),
     },
     lossRatioHistory,
-    lossRatioTrend,
-    trendWatch,
-    historicalPerformance: { lossRatio, claimsPaid, cumulativePremium, claimFrequency, tenureYears },
+    policyTenureYears,
     renewalEconomics: { expiringPremium, renewalPremium, movementPercent },
   }
 }
 
-// A plain-language explanation of what's driving this cycle's rating -- surfaced as
-// right-aligned subtext next to the "Risk Assessment" title. Same underlying logic as
-// the old computeRecommendation (any C or 2+ dimensions downgraded is worth calling
-// out first; otherwise any B or a trend watch; otherwise all-clear), but purely
-// descriptive -- no action directive (no "Escalate"/"Renew as standard"/"Auto-renew"
-// prefix, no suggested status) now that the Risk Quality section is information-only.
-export function describeRating(rq: RiskQuality): string {
-  const dims: Array<{ label: string; grade: Grade; momentum: Momentum }> = [
-    { label: 'Operational', grade: rq.operational.grade, momentum: rq.operational.momentum },
-  ]
-  if (rq.companyFinancial) dims.push({ label: 'Company & Financial', grade: rq.companyFinancial.grade, momentum: rq.companyFinancial.momentum })
-  dims.push({ label: 'Historical Performance', grade: rq.historical.grade, momentum: rq.historical.momentum })
-
-  const suffix = rq.companyFinancial ? '' : ' Company & Financial is not yet graded (Unverified).'
-
-  const cDims = dims.filter((d) => d.grade === 'C')
-  const downgraded = dims.filter((d) => d.momentum === 'down')
-
-  if (cDims.length > 0 || downgraded.length >= 2) {
-    const reason =
-      cDims.length > 0
-        ? `${cDims.map((d) => d.label).join(' and ')} graded C`
-        : `${downgraded.map((d) => d.label).join(' and ')} downgraded this cycle`
-    return `${reason}.${suffix}`
-  }
-
-  const bDims = dims.filter((d) => d.grade === 'B')
-  const moved = dims.filter((d) => d.momentum !== 'stable')
-  if (bDims.length > 0 || rq.trendWatch) {
-    const bits: string[] = []
-    if (bDims.length > 0) bits.push(`${bDims.map((d) => d.label).join(' and ')} graded B`)
-    if (moved.length > 0) bits.push(moved.map((d) => `${d.label} trending ${d.momentum}`).join(', '))
-    if (rq.trendWatch) bits.push('Historical trend worsening (watch)')
-    return `${bits.join('; ')}.${suffix}`
-  }
-
-  return `All dimensions graded A with no downgrades this cycle.${suffix}`
+// Tooltip details for a null (Unverified) Company & Financial grade -- kept separate
+// from getRiskQuality's companyFinancial assembly above so the UI layer can call it
+// without re-deriving the verified check itself. Exported since RiskQualityPanel needs
+// it precisely when riskQuality.companyFinancial is null (§5.4).
+export function unverifiedCompanyFinancialDetails(policy: RiskQualityInput): string[] {
+  return companyFinancialUnverifiedDetails(policy)
 }
