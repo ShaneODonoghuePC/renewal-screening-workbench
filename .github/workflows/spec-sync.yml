@@ -1,0 +1,55 @@
+name: Spec sync
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  spec-touched:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Every code commit must also touch SPEC.md
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Paths whose change implies the spec may need to change with it.
+          CODE='^(app|components|lib|scripts|data)/|^(tailwind\.config\.cjs|next\.config\.mjs)$'
+
+          if [ -z "${BEFORE:-}" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            RANGE="$AFTER~1..$AFTER"
+          else
+            RANGE="$BEFORE..$AFTER"
+          fi
+
+          FAILED=0
+          for SHA in $(git rev-list --no-merges "$RANGE"); do
+            SUBJECT=$(git log -1 --format=%s "$SHA")
+            FILES=$(git show --name-only --format='' "$SHA")
+
+            echo "$FILES" | grep -Eq "$CODE" || continue
+            case "$SUBJECT" in
+              *"[no-spec]"*) echo "skipped $SHA — [no-spec]: $SUBJECT"; continue ;;
+            esac
+            echo "$FILES" | grep -qx 'SPEC.md' && continue
+
+            echo "::error::$SHA changed code but not SPEC.md — $SUBJECT"
+            FAILED=1
+          done
+
+          if [ "$FAILED" = 1 ]; then
+            echo "See AGENTS.md: any change that alters behaviour, naming, status"
+            echo "vocabulary or the data model updates SPEC.md in the same commit."
+            echo "If a commit genuinely cannot affect the spec, put [no-spec] in"
+            echo "its message."
+            exit 1
+          fi
+
+          echo "All code commits in this push also touched SPEC.md."
