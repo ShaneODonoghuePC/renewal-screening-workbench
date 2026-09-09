@@ -17,7 +17,9 @@ even if it is outside your current task; do not silently fix it.
 This is enforced by CI on every push to main (`.github/workflows/spec-sync.yml`).
 A commit that changes `app/`, `components/`, `lib/`, `scripts/`, `data/`,
 `tailwind.config.cjs` or `next.config.mjs` must also change SPEC.md, or the
-push fails. `[no-spec]` in the commit message is the escape hatch — for
+CI run fails. Note the push still lands — a red run means main is already
+carrying a commit whose spec update is outstanding, and it needs a follow-up
+commit, not a retry. `[no-spec]` in the commit message is the escape hatch — for
 commits that genuinely cannot affect the spec (dependency bumps, formatting,
 comment typos) — not a way to avoid updating the spec.
 
