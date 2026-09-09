@@ -214,7 +214,7 @@ export function computeAggregateLossRatio(years: { grossPremiumWritten: number; 
 }
 
 // The most recently *completed* policy year -- one year before the upcoming renewal
-// date's year, same convention as the Renewal economics section's expiringYear
+// date's year, same convention as the Renewal financials section's expiringYear
 // (RiskQualityPanel's renewalYears()). Historical claims experience is necessarily for
 // years that have already finished, not the year about to be renewed into.
 function mostRecentCompletedYear(renewalDate: string | null): number {
@@ -269,7 +269,7 @@ function buildLossRatioHistory(rand: () => number, renewalDate: string | null, g
 // data (see computeDataConfidence / computeOperationalGrade / computeCompanyFinancialGrade
 // above). Everything else here has no real data source yet, so it's mocked, deterministic
 // per policy id: momentum for all three dimensions, the Historical grade and its
-// loss-ratio trend, and the Historical performance / renewal economics figures.
+// loss-ratio trend, and the Historical performance / renewal financials figures.
 export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   const rand = mulberry32(hashSeed(policy.id))
 
@@ -311,7 +311,7 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   // Watch: the 3-cycle loss-ratio trend is worsening but that hasn't (yet) moved the grade this cycle.
   const trendWatch = worsening && historicalMomentum === 'stable'
 
-  // Renewal economics: the renewal-year figure is the same real premium shown in
+  // Renewal financials: the renewal-year figure is the same real premium shown in
   // Identity & Context (policy.premium), not an independently generated number -- these
   // used to be two disconnected values that happened to both be called "premium." The
   // expiring-year figure is derived by reversing the synthesized movement percentage off

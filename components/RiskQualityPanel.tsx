@@ -79,7 +79,7 @@ function verifiedPillClasses(verified: boolean) {
 }
 
 // Tiny inline trajectory display -- no charting dependency needed for three points.
-// Used for the 3 Year Loss Ratio sparkline in Renewal Economics (moved here from the
+// Used for the 3 Year Loss Ratio sparkline in Renewal Financials (moved here from the
 // Historical Performance grade card, which no longer carries one).
 function Sparkline({ values }: { values: [number, number, number] }) {
   const min = Math.min(...values)
@@ -173,7 +173,7 @@ function formatDate(renewalDate: string | null) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
-// Expiring/renewal years for the Renewal Economics line -- there's no separate stored
+// Expiring/renewal years for the Renewal Financials line -- there's no separate stored
 // "expiring premium year," so it's derived as the year before the renewal date's year,
 // same cycle-to-cycle relationship the expiring vs. renewal premium figures represent.
 function renewalYears(renewalDate: string | null): { expiringYear: string; renewalYear: string } {
@@ -184,7 +184,7 @@ function renewalYears(renewalDate: string | null): { expiringYear: string; renew
   return { expiringYear: String(renewalYear - 1), renewalYear: String(renewalYear) }
 }
 
-// Risk Assessment panel for a Manual Review policy: identity/context + renewal economics
+// Risk Assessment panel for a Manual Review policy: identity/context + renewal financials
 // side by side, Risk Quality (information-only grade boxes) + Flag Reasons, the detailed
 // flag breakdown, and Historical Performance (mini-metrics + the 3-Yr Loss Ratio table).
 // Read-only -- status/assignment/comments/activity live in the separate Underwriter
@@ -274,7 +274,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         </div>
       </div>
 
-      {/* Two-column top section: Identity & Context (left) / Renewal Economics (right). */}
+      {/* Two-column top section: Identity & Context (left) / Renewal Financials (right). */}
       <div className="grid gap-8 border-b border-slate-200 pb-6 md:grid-cols-2">
         <section>
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
@@ -288,7 +288,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">Renewal Economics</h2>
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">Renewal Financials</h2>
           <dl>
             <InfoRow
               label="Expiring Premium"
@@ -321,7 +321,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
           anymore; the rating explanation sits under the header). Data Confidence and
           Operational/Company & Financial grades are derived from real flag data;
           Historical Performance and the figures below are still mocked. The header
-          itself is unboxed, matching Identity & Context / Renewal Economics / Historical
+          itself is unboxed, matching Identity & Context / Renewal Financials / Historical
           Performance above and below -- only the grade cards + Flag Reasons stay boxed,
           since that's the part the worst-of-three grade coloring is actually about. */}
       <section>
@@ -354,7 +354,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
             {/* Renamed from "Historical" -- shares its exact name with the Historical
                 Performance section further down (the one with the loss ratio table).
                 That's intentional: this is the grade card, that's the section. Its
-                sparkline moved up to Renewal Economics, so no `history` prop here. */}
+                sparkline moved up to Renewal Financials, so no `history` prop here. */}
             <GradeCard
               label="Historical Performance"
               scaleInfo="Reflects historical claims performance. A persistent loss-ratio increase raises a Watch flag even before the letter grade changes."
@@ -409,7 +409,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
 // The visible 3-Yr Loss Ratio table: Year / Gross Premium Written / Claims Incurred /
 // Loss Ratio (highlighted) rows, oldest -> newest year columns plus a 3-Yr Avg column.
 // Reads lossRatioHistory directly -- no separate math here, so this can never disagree
-// with the Renewal Economics sparkline or the Historical Performance grade card, all
+// with the Renewal Financials sparkline or the Historical Performance grade card, all
 // three of which trace back to the same lib/mockRiskQuality.ts data.
 function LossRatioTable({
   history,
