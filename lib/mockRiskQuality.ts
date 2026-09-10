@@ -212,6 +212,10 @@ function randNormal(rand: () => number, mean: number, sd: number): number {
   return mean + z * sd
 }
 
+// The maximum years of history this prototype ever synthesizes -- a ceiling, not a
+// fixed count (2026-09-17, was always exactly this many regardless of tenure). The
+// actual number of years generated for a given policy is `Math.min(policyTenureYears,
+// LOSS_RATIO_HISTORY_YEARS)` -- see getRiskQuality/buildLossRatioHistory.
 const LOSS_RATIO_HISTORY_YEARS = 5
 
 // The current, in-progress policy year -- the calendar year the renewal date itself
@@ -257,20 +261,31 @@ function drawClaimYearRatio(rand: () => number): number {
   return Math.exp(mu + sigma * z)
 }
 
-// Builds 5 years of loss-ratio history (oldest -> newest). premiumWritten follows a
-// plausible YoY trend backward from the current year's own written premium (unrelated
-// to whether the policy claims at all). claimsIncurred/claimsCount are decided by the
-// policy-level claiming draw above -- an honest zero for a clean policy or a clean
-// policy's non-claiming years, never floored or clamped away from zero (2026-09-10;
-// this used to have a 0.1 floor on the ratio and a "1 +" floor on claimsCount, both of
-// which made a genuinely clean year impossible).
+// Builds up to 5 years of loss-ratio history (oldest -> newest) -- capped at
+// `policyTenureYears` (2026-09-17, was always exactly 5): a policy cannot have loss
+// experience for years before it existed, so a tenure-2 policy generates 2 years, not 5.
+// Tenure is the authoritative figure here, per the single-source-of-truth principle --
+// the number of years generated is DERIVED from it (`Math.min(policyTenureYears,
+// LOSS_RATIO_HISTORY_YEARS)`, computed once by the caller and passed in as
+// `availableYears`), not drawn separately and left to agree with it only by chance.
+// premiumWritten follows a plausible YoY trend backward from the current year's own
+// written premium (unrelated to whether the policy claims at all). claimsIncurred/
+// claimsCount are decided by the policy-level claiming draw above -- an honest zero for
+// a clean policy or a clean policy's non-claiming years, never floored or clamped away
+// from zero (2026-09-10; this used to have a 0.1 floor on the ratio and a "1 +" floor on
+// claimsCount, both of which made a genuinely clean year impossible).
 //
 // The newest year is the current, in-progress policy year: premiumEarned is pro-rated
 // by months elapsed, and so, as of 2026-09-10, is claimsIncurred, on exactly the same
 // basis -- claims accrue over the year just as premium does, so pro-rating one and not
 // the other (the earlier bug) inflated that year's ratio by up to 12x. No flooring
 // monthsElapsed and no clamping the result; the range is left to fall where it falls.
-function buildLossRatioHistory(rand: () => number, renewalDate: string | null, currentPremiumWritten: number): LossRatioHistory {
+function buildLossRatioHistory(
+  rand: () => number,
+  renewalDate: string | null,
+  currentPremiumWritten: number,
+  availableYears: number,
+): LossRatioHistory {
   const newestYear = currentPolicyYear(renewalDate)
   // How far into the current policy year we are -- synthesized rather than read off
   // the real wall-clock date, so this stays a stable, per-policy-seeded figure like
@@ -278,8 +293,9 @@ function buildLossRatioHistory(rand: () => number, renewalDate: string | null, c
   const monthsElapsed = 1 + Math.floor(rand() * 12)
 
   // Premium trend: built newest -> oldest (index 0 = current year), reversed below.
+  // Only `availableYears` years are generated -- see the function comment above.
   const written = [currentPremiumWritten]
-  for (let i = 1; i < LOSS_RATIO_HISTORY_YEARS; i++) {
+  for (let i = 1; i < availableYears; i++) {
     const growth = Math.round((rand() * 30 - 10) * 10) / 10 // roughly -10%..+20% YoY
     written.push(Math.round(written[i - 1] / (1 + growth / 100)))
   }
@@ -294,9 +310,9 @@ function buildLossRatioHistory(rand: () => number, renewalDate: string | null, c
   // length-1 is the current year -- matters for the fallback below.
   const yearActive = written.map(() => isClaimingPolicy && rand() < CLAIMING_POLICY_YEAR_ACTIVE_RATE)
   if (isClaimingPolicy && !yearActive.some(Boolean)) {
-    // A "claiming policy" with zero active years by chance (all five draws missed) --
-    // force the current (newest) year active rather than silently having a claiming
-    // policy that never actually shows a claim anywhere.
+    // A "claiming policy" with zero active years by chance (all draws missed) -- force
+    // the current (newest) year active rather than silently having a claiming policy
+    // that never actually shows a claim anywhere.
     yearActive[yearActive.length - 1] = true
   }
   const claimsRaw = written.map((premiumWritten, i) => {
@@ -306,13 +322,13 @@ function buildLossRatioHistory(rand: () => number, renewalDate: string | null, c
   })
 
   const years: LossRatioYear[] = written.map((premiumWritten, i) => {
-    const isCurrent = i === LOSS_RATIO_HISTORY_YEARS - 1
+    const isCurrent = i === availableYears - 1
     const premiumEarned = isCurrent ? Math.round((premiumWritten * monthsElapsed) / 12) : premiumWritten
     // Pro-rate the current year's claims on the same basis as its premium (the fix) --
     // a genuinely zero year (not active) stays exactly zero either way.
     const claimsIncurred = isCurrent ? Math.round((claimsRaw[i].claimsIncurred * monthsElapsed) / 12) : claimsRaw[i].claimsIncurred
     return {
-      year: newestYear - (LOSS_RATIO_HISTORY_YEARS - 1 - i),
+      year: newestYear - (availableYears - 1 - i),
       premiumWritten,
       premiumEarned,
       claimsIncurred,
@@ -320,8 +336,18 @@ function buildLossRatioHistory(rand: () => number, renewalDate: string | null, c
     }
   })
 
+  // Capped at `years.length` (2026-09-17) -- a tenure-2 policy has only 2 years to slice
+  // from, so "3 Years" and "All Years" both fall back to the same 2-year slice as
+  // "2 Years" instead of a blank or a window reaching into years that don't exist.
+  // Blanks are deliberately out of scope for this prototype; production shows the same
+  // pattern for the same reason (a real DK Property register has 3 Years and 4 Years
+  // identical on 240 of 273 rows, 88%, precisely because available history is usually
+  // shorter than the widest window). Because every window slices the same `years` array
+  // from its end, a capped window is never LESS than the narrower window it caps down
+  // to equal -- nesting stays non-decreasing even when capping kicks in.
   function buildWindow(count: number, label: string): LossRatioWindow {
-    const slice = years.slice(years.length - count)
+    const cappedCount = Math.min(count, years.length)
+    const slice = years.slice(years.length - cappedCount)
     const premiumWritten = slice.reduce((sum, y) => sum + y.premiumWritten, 0)
     const premiumEarned = slice.reduce((sum, y) => sum + y.premiumEarned, 0)
     const claimsIncurred = slice.reduce((sum, y) => sum + y.claimsIncurred, 0)
@@ -362,8 +388,16 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   // claims at all (that's decided inside buildLossRatioHistory, at the policy level).
   const currentPremiumWritten = Math.round(50000 + rand() * 200000)
   const policyTenureYears = 1 + Math.floor(rand() * 12)
+  // Loss Ratio history is capped at tenure -- see buildLossRatioHistory's comment.
+  // Drawn BEFORE buildLossRatioHistory is called (tenure is the single source of truth
+  // this derives from, not a second independent draw). Tenure can run up to 12 while
+  // this prototype only ever synthesizes up to LOSS_RATIO_HISTORY_YEARS (5) years of
+  // history regardless -- on a 10-year policy, "All Years (Earned)" means "all five
+  // synthesized years," not the policy's whole life. Confirmed correct for this
+  // workbench (SPEC.md S5.4) rather than a second gap to fix here.
+  const availableLossRatioYears = Math.min(policyTenureYears, LOSS_RATIO_HISTORY_YEARS)
 
-  const lossRatioHistory = buildLossRatioHistory(rand, policy.renewalDate, currentPremiumWritten)
+  const lossRatioHistory = buildLossRatioHistory(rand, policy.renewalDate, currentPremiumWritten, availableLossRatioYears)
   const historicalGrade = computeHistoricalGrade(lossRatioHistory.allYears.lossRatio)
 
   // Renewal financials: the renewal-year figure is the same real premium shown in
