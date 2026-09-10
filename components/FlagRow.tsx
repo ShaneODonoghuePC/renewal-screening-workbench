@@ -19,18 +19,28 @@ const SEVERITY_FILL: Record<FlagSeverity, string> = {
 // Frame) omit it entirely -- they're deliberately not flags, so even when fired they
 // stay plain/muted rather than red, so they read as "not a flag" instead of a
 // broken-looking real one.
+//
+// `unavailable` (added 2026-09-10) renders neither Y nor N -- a plain "N" with no
+// figure is indistinguishable from "checked, confirmed clean," which is the wrong
+// read for the five secondary Stage 2 rows on a D&B No Match policy: D&B never
+// returned anything about those, so there is no finding to report as clean. Always
+// wins over `fired`/`figure`/`severity` when true, since `fired` is guaranteed false
+// on these rows anyway (see the No-Match invariant, SPEC.md S3.3) but the distinct
+// rendering is what actually communicates "absent," not the boolean underneath it.
 export default function FlagRow({
   label,
   fired,
   figure,
   severity,
+  unavailable,
 }: {
   label: string
   fired: boolean
   figure?: string | null
   severity?: FlagSeverity
+  unavailable?: boolean
 }) {
-  const filled = fired && severity != null
+  const filled = !unavailable && fired && severity != null
 
   return (
     <div
@@ -41,11 +51,15 @@ export default function FlagRow({
         filled ? `${SEVERITY_FILL[severity]} border-white` : 'border-slate-100'
       }`}
     >
-      <span className={filled ? 'font-medium' : 'text-slate-700'}>{label}</span>
-      <span className={filled ? 'font-semibold' : 'font-medium text-slate-500'}>
-        {yn(fired)}
-        {figure != null && figure !== '' ? ` (${figure})` : ''}
-      </span>
+      <span className={filled ? 'font-medium' : unavailable ? 'text-slate-400' : 'text-slate-700'}>{label}</span>
+      {unavailable ? (
+        <span className="font-medium italic text-slate-400">Unavailable</span>
+      ) : (
+        <span className={filled ? 'font-semibold' : 'font-medium text-slate-500'}>
+          {yn(fired)}
+          {figure != null && figure !== '' ? ` (${figure})` : ''}
+        </span>
+      )}
     </div>
   )
 }

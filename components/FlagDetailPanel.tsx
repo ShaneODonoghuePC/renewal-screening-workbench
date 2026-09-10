@@ -57,13 +57,26 @@ export default function FlagDetailPanel({
         <h3 className="mb-2 text-sm font-semibold text-slate-900">{stage2Heading}</h3>
         <div className="flex-1 rounded-md border border-slate-200 bg-white p-4">
           <FlagRow label="D&B No Match" fired={item.dnbNoMatch} severity="warning" />
-          <FlagRow label="D&B Status Inactive" fired={item.dnbStatusInactive} figure={item.dnbOperatingStatusLabel} severity="warning" />
-          <FlagRow label="D&B Rating Below A" fired={item.dnbRatingBelowA} figure={item.dnbRating} severity="warning" />
+          <FlagRow
+            label="D&B Status Inactive"
+            fired={item.dnbStatusInactive}
+            figure={item.dnbOperatingStatusLabel}
+            severity="warning"
+            unavailable={item.dnbNoMatch}
+          />
+          <FlagRow
+            label="D&B Rating Below A"
+            fired={item.dnbRatingBelowA}
+            figure={item.dnbRating}
+            severity="warning"
+            unavailable={item.dnbNoMatch}
+          />
           <FlagRow
             label="Latest Profit Negative"
             fired={item.latestProfitNegative}
             figure={formatCurrency(item.latestNetIncome, item.currency)}
             severity="warning"
+            unavailable={item.dnbNoMatch}
           />
           <FlagRow
             label="Assets Moved >25% YoY"
@@ -74,8 +87,15 @@ export default function FlagDetailPanel({
                 : undefined
             }
             severity="warning"
+            unavailable={item.dnbNoMatch}
           />
-          <FlagRow label="D&B Listed Company" fired={item.dnbListedCompany} figure={item.dnbListedExchange} severity="warning" />
+          <FlagRow
+            label="D&B Listed Company"
+            fired={item.dnbListedCompany}
+            figure={item.dnbListedExchange}
+            severity="warning"
+            unavailable={item.dnbNoMatch}
+          />
         </div>
       </div>
     </div>

@@ -79,14 +79,14 @@ export type RiskQuality = {
   }
 }
 
-// Data Confidence: Verified unless D&B couldn't match the company or shows it inactive.
-// This is the ONLY definition of "verified" in the app (2026-09-09) -- a separate,
-// narrower Data-Verified-pill rule (dnbNoMatch alone) existed briefly in the UI layer
-// and was removed along with the pill itself; computeDataConfidence's two-flag rule is
-// what the Company & Financial grade gate has always used, and is now the single source
-// of truth for what "Unverified" means anywhere in this panel.
+// Data Confidence: Verified unless D&B couldn't match the company. D&B Status Inactive
+// was folded into computeCompanyFinancialGrade as a fifth scoring flag on 2026-09-10 --
+// D&B DID return a match for an inactive company, so there is a finding to grade, unlike
+// No Match where there is nothing D&B reported at all. computeDataConfidence's one-flag
+// rule is what the Company & Financial grade gate has always used, and is now the single
+// source of truth for what "Unverified" means anywhere in this panel.
 export function computeDataConfidence(policy: RiskQualityInput): boolean {
-  return !policy.dnbNoMatch && !policy.dnbStatusInactive
+  return !policy.dnbNoMatch
 }
 
 // Operational grade, from the real Stage 1 flags: Open Claim / Premium Unpaid alone force
@@ -99,12 +99,18 @@ export function computeOperationalGrade(policy: RiskQualityInput): Grade {
   return 'A'
 }
 
-// Company & Financial grade, from the real Stage 2 flags -- D&B Listed Company counts
-// alongside the other three (same tier, same threshold rule), derived straight from
-// the four boolean fields rather than the stored stage2FlagCount column, which predates
-// this field counting here and would undercount.
+// Company & Financial grade, from the real Stage 2 flags -- D&B Listed Company and D&B
+// Status Inactive (added 2026-09-10) count alongside the other three (same tier, same
+// threshold rule), derived straight from the five boolean fields rather than the stored
+// stage2FlagCount column, which predates this field counting here and would undercount.
 export function computeCompanyFinancialGrade(policy: RiskQualityInput): Grade {
-  const flags = [policy.dnbRatingBelowA, policy.latestProfitNegative, policy.assetsMovedSignificant, policy.dnbListedCompany]
+  const flags = [
+    policy.dnbStatusInactive,
+    policy.dnbRatingBelowA,
+    policy.latestProfitNegative,
+    policy.assetsMovedSignificant,
+    policy.dnbListedCompany,
+  ]
   const firedCount = flags.filter(Boolean).length
   if (firedCount >= 2) return 'C'
   if (firedCount === 1) return 'B'
@@ -130,6 +136,7 @@ function operationalDetails(policy: RiskQualityInput): string[] {
 // hint) is gone (2026-09-09) -- the explanation has to live here.
 function companyFinancialDetails(policy: RiskQualityInput): string[] {
   const fired: string[] = []
+  if (policy.dnbStatusInactive) fired.push('D&B Status Inactive')
   if (policy.dnbRatingBelowA) fired.push('D&B Rating Below A')
   if (policy.latestProfitNegative) fired.push('Latest Profit Negative')
   if (policy.assetsMovedSignificant) fired.push('Assets Moved >25% YoY')
@@ -137,17 +144,11 @@ function companyFinancialDetails(policy: RiskQualityInput): string[] {
   return fired.length > 0 ? fired : ['No flags fired']
 }
 
-// Plain-language explanation for why Company & Financial is N/A, naming the specific
-// D&B condition(s) responsible -- computeDataConfidence's own two-flag rule, so this
-// can never disagree with the gate that actually suppressed the grade.
+// Plain-language explanation for why Company & Financial is N/A. computeDataConfidence's
+// gate is now dnbNoMatch alone (2026-09-10), so this is only ever called for that one
+// reason -- can never disagree with the gate that actually suppressed the grade.
 function companyFinancialUnverifiedDetails(policy: RiskQualityInput): string[] {
-  if (policy.dnbNoMatch && policy.dnbStatusInactive) {
-    return ['Not graded: D&B returned no match for this company, and shows it as inactive.']
-  }
-  if (policy.dnbNoMatch) {
-    return ['Not graded: D&B returned no match for this company.']
-  }
-  return ['Not graded: D&B shows this company as inactive.']
+  return ['Not graded: D&B returned no match for this company.']
 }
 
 // Historical grade bands -- the ONE place these numbers are written down (2026-09-10).

@@ -16,6 +16,7 @@
 // See the top of synthesize-data.ts for the full rationale behind both fixes.
 
 import type { Client } from '@libsql/client'
+import { enforceNoMatchInvariant, FLAG_REASON_LABELS, computeAttention } from './dnbRules'
 
 const COUNTRIES = ['DK', 'NO', 'SE', 'FI'] as const
 export type Country = (typeof COUNTRIES)[number]
@@ -128,18 +129,6 @@ export type PolicyRow = {
   dnbOperatingStatusLabel: string | null
   dnbListedExchange: string | null
 }
-
-const FLAG_REASON_LABELS: Array<[keyof PolicyRow, string]> = [
-  ['openClaim', 'Open Claim'],
-  ['premiumUnpaid', 'Premium Unpaid'],
-  ['renewalTypeManual', 'RPUX set to Manual'],
-  ['systemListedCompany', 'Listed Company'],
-  ['dnbNoMatch', 'D&B No Match'],
-  ['dnbRatingBelowA', 'D&B Rating Classification below A'],
-  ['latestProfitNegative', 'D&B Negative Profit'],
-  ['assetsMovedSignificant', 'D&B Assets Moved >25% YoY'],
-  ['dnbListedCompany', 'D&B Listed Company'],
-]
 
 function lastDayOfMonth(year: number, month1to12: number): number {
   return new Date(Date.UTC(year, month1to12, 0)).getUTCDate()
@@ -299,11 +288,25 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
         const renewalTypeManual = bernoulli(rowRand, flagRates.renewalTypeManual)
         const systemListedCompany = bernoulli(rowRand, flagRates.systemListedCompany)
         const dnbNoMatch = bernoulli(rowRand, flagRates.dnbNoMatch)
-        const dnbStatusInactive = bernoulli(rowRand, flagRates.dnbStatusInactive)
-        const dnbRatingBelowA = bernoulli(rowRand, flagRates.dnbRatingBelowA)
-        const latestProfitNegative = bernoulli(rowRand, flagRates.latestProfitNegative)
-        const assetsMovedSignificant = bernoulli(rowRand, flagRates.assetsMovedSignificant)
-        const dnbListedCompany = bernoulli(rowRand, flagRates.dnbListedCompany)
+        // The other five Stage 2 booleans are drawn independently, then immediately
+        // corrected through enforceNoMatchInvariant below -- draws that land dnbNoMatch
+        // true alongside one of these are exactly the violation SPEC.md S3.3 forbids
+        // (D&B returned nothing, so there is no other D&B finding to report), so this
+        // generator must never be able to emit that combination.
+        const drawn = enforceNoMatchInvariant({
+          dnbNoMatch,
+          dnbStatusInactive: bernoulli(rowRand, flagRates.dnbStatusInactive),
+          dnbRatingBelowA: bernoulli(rowRand, flagRates.dnbRatingBelowA),
+          latestProfitNegative: bernoulli(rowRand, flagRates.latestProfitNegative),
+          assetsMovedSignificant: bernoulli(rowRand, flagRates.assetsMovedSignificant),
+          dnbListedCompany: bernoulli(rowRand, flagRates.dnbListedCompany),
+          dnbRating: null,
+          latestNetIncome: null,
+          assetsChangePercent: null,
+          dnbOperatingStatusLabel: null,
+          dnbListedExchange: null,
+        })
+        const { dnbStatusInactive, dnbRatingBelowA, latestProfitNegative, assetsMovedSignificant, dnbListedCompany } = drawn
         const anyFlagFired = openClaim || premiumUnpaid || renewalTypeManual || systemListedCompany
           || dnbNoMatch || dnbStatusInactive || dnbRatingBelowA || latestProfitNegative
           || assetsMovedSignificant || dnbListedCompany
@@ -359,24 +362,27 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
 
         const reasons: string[] = []
         for (const [key, label] of FLAG_REASON_LABELS) {
-          if (newRow[key]) reasons.push(label)
+          if (newRow[key as keyof PolicyRow]) reasons.push(label)
         }
         if (predictorConcern) reasons.push('Attention: D&B Predictor Concern')
         if (significantEvent) reasons.push('Attention: D&B Significant Event')
         if (listedStatusUnknown) reasons.push('Attention: D&B Listed Status Unknown')
         newRow.flagReasons = reasons.length > 0 ? reasons.join(', ') : null
 
-        newRow.attention = newRow.openClaim || newRow.premiumUnpaid
-          ? 'High'
-          : (newRow.renewalTypeManual || newRow.systemListedCompany || newRow.dnbNoMatch || newRow.dnbRatingBelowA || newRow.latestProfitNegative || newRow.assetsMovedSignificant || newRow.dnbListedCompany)
-            ? 'Medium'
-            : 'None'
+        newRow.attention = computeAttention(newRow)
 
-        newRow.dnbRating = newRow.dnbRatingBelowA ? 'B3' : 'AA2'
-        newRow.latestNetIncome = newRow.latestProfitNegative ? -140000 : 140000
-        newRow.assetsChangePercent = newRow.assetsMovedSignificant ? 30 : 12
-        newRow.dnbOperatingStatusLabel = newRow.dnbStatusInactive ? 'Inactive' : 'Active'
-        newRow.dnbListedExchange = newRow.dnbListedCompany ? 'NASDAQ' : null
+        // Figures default to a "clean" value, EXCEPT when dnbNoMatch fired -- then
+        // enforceNoMatchInvariant above already forced the other five booleans false,
+        // and these five figures must stay null to match (SPEC.md S3.3): a "clean"
+        // figure here would misrepresent a company D&B never matched as one D&B
+        // checked and found fine, which is the exact bug this invariant forbids.
+        if (!newRow.dnbNoMatch) {
+          newRow.dnbRating = newRow.dnbRatingBelowA ? 'B3' : 'AA2'
+          newRow.latestNetIncome = newRow.latestProfitNegative ? -140000 : 140000
+          newRow.assetsChangePercent = newRow.assetsMovedSignificant ? 30 : 12
+          newRow.dnbOperatingStatusLabel = newRow.dnbStatusInactive ? 'Inactive' : 'Active'
+          newRow.dnbListedExchange = newRow.dnbListedCompany ? 'NASDAQ' : null
+        }
 
         newPolicies.push(newRow)
       }

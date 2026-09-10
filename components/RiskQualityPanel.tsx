@@ -262,8 +262,8 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
   return (
     <div className="space-y-6">
       {/* Header -- title only. The Data Verified/Attention pills that used to live
-          here were removed 2026-09-09; the D&B-no-match/inactive explanation that was
-          the pill's only real purpose now lives in the Company & Financial card's own
+          here were removed 2026-09-09; the D&B-no-match explanation that was the
+          pill's only real purpose now lives in the Company & Financial card's own
           tooltip (see GradeCard/unverifiedCompanyFinancialDetails), where it belongs
           next to the grade it actually affects. */}
       <div className="border-b border-slate-200 pb-4">
@@ -291,7 +291,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
             scaleInfo={[
               'A = no Company & Financial Flags fired.',
               'B = exactly one flag.',
-              'C = two or more of D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company.',
+              'C = two or more of D&B Status Inactive, D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company.',
             ]}
             grade={riskQuality.companyFinancial?.grade ?? null}
             details={riskQuality.companyFinancial?.details ?? unverifiedCompanyFinancialDetails(policy)}

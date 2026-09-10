@@ -81,12 +81,7 @@ export type FixRoutingPlan = {
   totalRowsChecked: number
 }
 
-// Read-only: SELECT-only against policies, then pure computation. No INSERT/UPDATE
-// anywhere in this function or anything it calls.
-export async function computeFixRoutingPlan(db: Client): Promise<FixRoutingPlan> {
-  const policiesResult = await db.execute('SELECT * FROM policies')
-  const allRows = policiesResult.rows as unknown as PolicyRow[]
-
+function planFromRows(allRows: PolicyRow[]): FixRoutingPlan {
   const corrections: RoutingCorrection[] = []
   const unrecognizedIdSchemes: UnrecognizedIdScheme[] = []
 
@@ -102,6 +97,19 @@ export async function computeFixRoutingPlan(db: Client): Promise<FixRoutingPlan>
   }
 
   return { corrections, unrecognizedIdSchemes, totalRowsChecked: allRows.length }
+}
+
+// Read-only: SELECT-only against policies, then pure computation. No INSERT/UPDATE
+// anywhere in this function or anything it calls.
+export async function computeFixRoutingPlan(db: Client): Promise<FixRoutingPlan> {
+  const policiesResult = await db.execute('SELECT * FROM policies')
+  return planFromRows(policiesResult.rows as unknown as PolicyRow[])
+}
+
+// Same plan computation, over an in-memory array -- for data/seed/*.json, which has no
+// database to SELECT from (mirrors fixCurrencyPlan.ts's ForRows variant).
+export function computeFixRoutingPlanForRows(rows: PolicyRow[]): FixRoutingPlan {
+  return planFromRows(rows)
 }
 
 export function printFixRoutingPlanReport(plan: FixRoutingPlan) {
