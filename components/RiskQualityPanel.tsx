@@ -150,7 +150,10 @@ function GradeCard({
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between border-b border-slate-100 py-1.5 text-sm last:border-0">
-      <span className="text-slate-500">{label}</span>
+      {/* text-slate-700, matching FlagRow's label colour exactly (2026-09-12, was
+          text-slate-500 -- noticeably lighter than the flag containers' own row
+          labels, an inconsistency this pass corrects). */}
+      <span className="text-slate-700">{label}</span>
       <span className="font-medium text-slate-900">{value}</span>
     </div>
   )
@@ -301,10 +304,19 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
           />
           <GradeCard
             label="Company & Financial"
+            // Simplified 2026-09-12 -- no longer enumerates all seven scoring flags on
+            // the C line (the reason this tooltip used to be the longest of the three).
+            // The Company & Financial Flags table below already lists every flag, and
+            // "Flags Raised" lists the ones that actually fired, so nothing is lost by
+            // dropping the enumeration here. See SPEC.md S5.4 for why the three grade
+            // cards' tooltips are now genuinely different shapes -- Operational's C
+            // line still has to name Open Claim/Premium Unpaid (each forces a C alone),
+            // and Historical's still carries the HISTORICAL_GRADE_BANDS percentages --
+            // and why that's correct rather than an inconsistency to "fix" later.
             scaleInfo={[
               'A = no Company & Financial Flags fired.',
               'B = exactly one flag.',
-              'C = two or more of D&B Status Inactive, D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, D&B Listed Company, Latest Consolidated Profit Negative, or Consolidated Assets Moved >25% YoY.',
+              'C = two or more flags.',
             ]}
             grade={riskQuality.companyFinancial?.grade ?? null}
             unverifiedReason={riskQuality.companyFinancial ? undefined : unverifiedCompanyFinancialDetails(policy)}
@@ -424,14 +436,23 @@ function LossRatioTable({
     <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
       <table className="w-full text-sm">
         <tbody className="divide-y divide-slate-100">
-          {/* Fills swapped 2026-09-11: header row is now the darker of the two
-              (bg-slate-100), Loss Ratio the lighter (bg-slate-50) -- was the other way
-              round. Both against the explicit bg-white on this wrapper above (added in
-              the same pass, 2026-09-11) so this table stays white now that the panel
-              around it has its own subtle bg-slate-50 fill -- without it, the unstyled
-              rows below (Claims Incurred etc.) would show the panel's tint through the
-              table's own transparent background. */}
-          <tr className="bg-slate-100">
+          {/* Fills changed to a warm neutral 2026-09-12 -- the 2026-09-11 slate swap
+              (header bg-slate-100, Loss Ratio bg-slate-50) left the Loss Ratio row
+              exactly matching the panel's own bg-slate-50 root fill (RiskQualityPanel's
+              return statement above), so the table read as barely separated from the
+              page behind it. stone (warm) reads as a deliberate complementary choice
+              against the panel's cool slate-50 and harmonises with the app's putty page
+              background, and carries none of the sage (best-grade tint) or amber/red
+              (flag-severity) meanings already claimed elsewhere in this app. Header
+              bg-stone-200, Loss Ratio row bg-stone-100 -- a genuine two-step jump
+              (50 and 200 read too close to each other at this size; 100 keeps a real
+              visible gap from 200 while landing clearly warmer/darker than the panel's
+              slate-50 too, verified via computed background-color, not eyeballed).
+              Both against the explicit bg-white on this wrapper above (2026-09-11) so
+              this table stays white now that the panel around it has its own subtle
+              fill -- without it, the unstyled rows below (Claims Incurred etc.) would
+              show the panel's tint through the table's own transparent background. */}
+          <tr className="bg-stone-200">
             <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-500"></td>
             {windows.map((w) => (
               <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-900">
@@ -439,7 +460,7 @@ function LossRatioTable({
               </td>
             ))}
           </tr>
-          <tr className="bg-slate-50 font-semibold text-slate-900">
+          <tr className="bg-stone-100 font-semibold text-slate-900">
             <td className="whitespace-nowrap px-4 py-2">Loss Ratio</td>
             {windows.map((w) => (
               <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right">
@@ -447,8 +468,10 @@ function LossRatioTable({
               </td>
             ))}
           </tr>
+          {/* Row-label cells below: text-slate-700 (2026-09-12, was text-slate-500),
+              matching FlagRow's label colour exactly -- same fix as InfoRow above. */}
           <tr>
-            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Claims Incurred</td>
+            <td className="whitespace-nowrap px-4 py-2 text-slate-700">Claims Incurred</td>
             {windows.map((w) => (
               <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
                 {formatCompactCurrency(w.claimsIncurred, currency)}
@@ -456,7 +479,7 @@ function LossRatioTable({
             ))}
           </tr>
           <tr>
-            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Claims Frequency</td>
+            <td className="whitespace-nowrap px-4 py-2 text-slate-700">Claims Frequency</td>
             {windows.map((w) => (
               <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
                 {w.claimsCount}
@@ -464,7 +487,7 @@ function LossRatioTable({
             ))}
           </tr>
           <tr>
-            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Premium Earned</td>
+            <td className="whitespace-nowrap px-4 py-2 text-slate-700">Premium Earned</td>
             {windows.map((w) => (
               <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
                 {formatCompactCurrency(w.premiumEarned, currency)}
@@ -472,7 +495,7 @@ function LossRatioTable({
             ))}
           </tr>
           <tr>
-            <td className="whitespace-nowrap px-4 py-2 text-slate-500">Premium Written</td>
+            <td className="whitespace-nowrap px-4 py-2 text-slate-700">Premium Written</td>
             {windows.map((w) => (
               <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right text-slate-900">
                 {formatCompactCurrency(w.premiumWritten, currency)}

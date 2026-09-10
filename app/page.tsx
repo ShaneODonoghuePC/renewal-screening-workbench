@@ -749,9 +749,10 @@ export default function TeamViewPage() {
           respect their own margin same as anything else) -- pushing the whole
           panel down and leaving a gap above it despite h-screen. Sibling of the
           wrapper instead of a child of it, so it never picks up that spacing.
-          No title prop -- RiskQualityPanel renders its own "Risk Assessment" header
-          (title + rating-explanation subtext inline together), so the slide-out chrome
-          stays to just the Close button rather than showing a second, separate title. */}
+          No title prop -- SlideOutPanel dropped that prop entirely 2026-09-12, along
+          with the fixed header bar it used to populate (the Close button floats now).
+          RiskQualityPanel renders its own "Risk Evaluation" h1 as the first thing in
+          the panel's content, so there was never a second, separate title to show. */}
       <SlideOutPanel open={reviewPolicyId !== null} onClose={() => setReviewPolicyId(null)}>
         {reviewPolicyId && <RiskQualityPanel policyId={reviewPolicyId} />}
       </SlideOutPanel>
