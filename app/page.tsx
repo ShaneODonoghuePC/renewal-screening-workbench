@@ -6,6 +6,7 @@ import { deriveRenewalMonth } from '@/lib/renewalMonth'
 import { buildMonthTabs } from '@/lib/monthTabs'
 import { isTerminalStatus } from '@/lib/statusWorkflow'
 import { EMPTY_VALUE } from '@/lib/format'
+import { flagList } from '@/lib/flags'
 import SeverityBadge from '@/components/SeverityBadge'
 import SlideOutPanel from '@/components/SlideOutPanel'
 import RiskQualityPanel from '@/components/RiskQualityPanel'
@@ -88,11 +89,6 @@ function attentionRank(attention: string | null) {
   if (attention === 'High') return 1
   if (attention === 'Medium') return 2
   return 3
-}
-
-function flagList(flagReasons: string | null) {
-  if (!flagReasons) return []
-  return flagReasons.split(',').map((s) => s.trim()).filter(Boolean)
 }
 
 // RPUX Auto Renew has no review_states row at all, so Status filtering genuinely

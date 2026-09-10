@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { formatCurrency, formatCompactCurrency, EMPTY_VALUE } from '@/lib/format'
 import { getRiskQuality, unverifiedCompanyFinancialDetails, historicalGradeScaleInfo, type Grade } from '@/lib/mockRiskQuality'
+import { attentionOnlyFlags } from '@/lib/flags'
 import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel'
 
 type PolicyDetail = FlagEvidence & {
@@ -56,12 +57,20 @@ function riskQualitySectionClasses(grade: Grade) {
 // treatment didn't. The one place still explaining "why this grade" is this popover;
 // there's no separate reason line under the circle any more.
 //
-// 2026-09-10: popover shrunk ~25% (w-64 p-3 -> w-48 p-2) -- the trigger icon itself
-// (h-6 w-6, and its "?" glyph) is UNCHANGED, since that affordance was deliberately
-// strengthened in the prior round and shrinking it would undo that; only the popover
-// shrank. `scaleInfo` is a string[] now (one line per band, plain stacked lines, not
-// bulleted -- the A/B/C prefix on each line already does what a bullet would) instead
-// of a single sentence, same reasoning as `details` already being a list.
+// 2026-09-10: popover shrunk ~25% (w-64 p-3 -> w-48 p-2). `scaleInfo` is a string[] now
+// (one line per band, plain stacked lines, not bulleted -- the A/B/C prefix on each
+// line already does what a bullet would) instead of a single sentence, same reasoning
+// as `details` already being a list.
+//
+// Trigger circle shrunk a further 25% the same day (h-6 w-6 / 24px -> visible circle
+// h-[18px] w-[18px]) -- an arbitrary value, not h-5, so it's actually 18px and not a
+// rounded-to-the-nearest-step approximation. The <button> itself STAYS 24px (h-6 w-6)
+// as the real hit/focus target; the smaller visible circle is an inner <span>, inset by
+// the button's own p-[3px] padding ((24-18)/2 = 3 each side) -- "padding on the
+// wrapper," per the brief, rather than shrinking the interactive element itself, so the
+// hover/click area and the keyboard focus ring stay comfortable even though the circle
+// reads smaller. Glyph dropped to text-[10px] (from text-xs/12px) since 12px looked
+// cramped in an 18px circle; 18px is the floor for the circle itself, not the glyph.
 function GradeCard({
   label,
   scaleInfo,
@@ -78,10 +87,12 @@ function GradeCard({
       <div className="group absolute right-2 top-2">
         <button
           type="button"
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-white shadow-sm transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          className="group/btn flex h-6 w-6 items-center justify-center rounded-full p-[3px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           aria-label={`What ${label} grades mean, and why this one`}
         >
-          ?
+          <span className="flex h-full w-full items-center justify-center rounded-full bg-slate-700 text-[10px] font-bold leading-none text-white shadow-sm transition group-hover/btn:bg-brand">
+            ?
+          </span>
         </button>
         <div
           role="tooltip"
@@ -100,16 +111,24 @@ function GradeCard({
         </div>
       </div>
 
-      <p className="text-xs font-medium text-slate-500">{label}</p>
+      {/* 2026-09-10: matched to FlagDetailPanel's section headings (text-sm
+          font-semibold text-slate-900, components/FlagDetailPanel.tsx) so these read
+          as peers of "Operational Review Flags"/"Company & Financial Flags" rather
+          than small grey captions. Left as a <p>, not promoted to a heading element --
+          the three-card block deliberately has no section header/headline above it
+          (2026-09-09), so there's no h2 for an h3 here to nest under without reading
+          oddly against the real section h2s elsewhere on the panel (Loss Ratio,
+          Identity & Context). */}
+      <p className="text-sm font-semibold text-slate-900">{label}</p>
       <div className="mt-2 flex justify-center">
         {grade ? (
           <span
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold ${gradeBadgeClasses(grade)}`}
+            className={`inline-flex h-[45px] w-[45px] items-center justify-center rounded-full text-xl font-bold ${gradeBadgeClasses(grade)}`}
           >
             {grade}
           </span>
         ) : (
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-slate-300 text-xs font-medium text-slate-400">
+          <span className="inline-flex h-[45px] w-[45px] items-center justify-center rounded-full border border-dashed border-slate-300 text-xs font-medium text-slate-400">
             N/A
           </span>
         )}
@@ -160,13 +179,15 @@ function pct(ratio: number) {
 //
 // Section order, top to bottom (2026-09-10, supersedes the previous order): title
 // only (no pills) -> the three graded dimension cards (no header/headline) ->
-// Identity & Context / Renewal Financials (two columns) -> Loss Ratio -> Operational
-// Review Flags / Company & Financial Flags -> Flags Raised (inline), now a closing
-// summary line under the itemized breakdown rather than a preview above it (moved
-// 2026-09-10, was directly above the flag sections). Historical Performance (the old
-// section, and its Policy Metrics block) is gone entirely -- Policy Tenure, the one
-// thing in it that wasn't superseded by the Loss Ratio section, moved into Identity &
-// Context.
+// Identity & Context / Renewal Financials (two columns) -> Loss Ratio -> Flags Raised
+// -- now the shared section header for the rest of the panel (2026-09-10, was its own
+// standalone "Flags Raised: <flagReasons>" summary line below the tables), containing,
+// in order: the "Attention Flags" sub-header + inline list (only when at least one
+// attention-only flag is present, SPEC.md S3.2 -- these never get a Y/N row below),
+// then Operational Review Flags / Company & Financial Flags. Historical Performance
+// (the old section, and its Policy Metrics block) is gone entirely -- Policy Tenure,
+// the one thing in it that wasn't superseded by the Loss Ratio section, moved into
+// Identity & Context.
 //
 // Read-only -- status/assignment/comments/activity live in the separate Underwriter
 // Workspace (components/UnderwriterWorkspace.tsx), reached via the table's expand row.
@@ -230,6 +251,13 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
   const sectionGrade = worstGrade(sectionGradeInputs)
   const { expiringYear, renewalYear } = renewalYears(policy.renewalDate)
   const { oneYear, twoYear, threeYear, allYears } = riskQuality.lossRatioHistory
+  // The four attention-only signals (Data Incomplete, D&B Predictor Concern, D&B
+  // Significant Event, D&B Listed Status Unknown, SPEC.md S3.2) never get a Y/N row in
+  // FlagDetailPanel below -- this is the only place they're still visible on this
+  // panel, via lib/flags.ts's shared parser (2026-09-10; previously only app/page.tsx
+  // parsed flagReasons, and this panel had no equivalent -- see the standalone
+  // "Flags Raised: <flagReasons>" line this replaces, below).
+  const attentionFlags = attentionOnlyFlags(policy.flagReasons)
 
   return (
     <div className="space-y-6">
@@ -323,20 +351,27 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         <LossRatioTable oneYear={oneYear} twoYear={twoYear} threeYear={threeYear} allYears={allYears} currency={policy.currency} />
       </section>
 
-      {/* Detailed flag breakdown -- unchanged in substance. */}
+      {/* "Flags Raised" is now the shared section header for the whole detailed-flag
+          area (2026-09-10) -- the standalone "Flags Raised: <flagReasons>" summary
+          line this replaced is gone entirely; it was pure duplication of the two
+          itemized tables below for every flag that has a Y/N row. The one thing it
+          covered that the tables genuinely don't is the four attention-only signals
+          (SPEC.md S3.2) -- those get their own "Attention Flags" sub-header, in the
+          same inline "header: list" style the old line used, directly under "Flags
+          Raised" and above the tables (rather than after them: it reads as scene-
+          setting for the itemized breakdown below it, the same role "Flags Raised"
+          itself used to play when it sat above the tables, 2026-09-09-to-10). Rendered
+          only when at least one attention-only flag is present -- no empty state, no
+          dash, when there are none. */}
       <section>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Flags Raised</h2>
+        {attentionFlags.length > 0 && (
+          <p className="mb-3 text-sm">
+            <span className="font-semibold text-slate-900">Attention Flags: </span>
+            <span className="text-slate-700">{attentionFlags.join(', ')}</span>
+          </p>
+        )}
         <FlagDetailPanel item={policy} stage1Heading="Operational Review Flags" stage2Heading="Company & Financial Flags" />
-      </section>
-
-      {/* Flags Raised -- renamed from "Flag Reasons" (2026-09-09), rendered inline
-          with its own header rather than stacked dt/dd below it. Moved below both
-          flag sections (2026-09-10, was directly above them) -- now reads as a
-          closing summary of the itemized breakdown above it, not a preview of it. */}
-      <section>
-        <p className="text-sm">
-          <span className="font-semibold text-slate-900">Flags Raised: </span>
-          <span className="text-slate-700">{policy.flagReasons || EMPTY_VALUE}</span>
-        </p>
       </section>
     </div>
   )
