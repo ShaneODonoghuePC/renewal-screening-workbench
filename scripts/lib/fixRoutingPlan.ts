@@ -25,19 +25,31 @@
 // only ever issues a SELECT against policies (read-only); applyFixRoutingPlan() is the
 // only place any UPDATE happens, and it only ever updates the `routing` column -- never
 // review_states, activity_log, or comments.
+//
+// Business line (2026-09-11, SPEC.md S3.1): checked BEFORE source system + flags --
+// a business line in MANUAL_REVIEW_FORCED_BUSINESS_LINES forces Manual Review on its
+// own, full stop. D&O (the only business line modelled here) is never in that set, so
+// this is scaffolding, not a behaviour change -- see scripts/lib/businessLine.ts.
+//
+// The two consolidated scoring flags (SPEC.md S3.3, added 2026-09-11) are in FLAG_KEYS
+// below like any other Stage 2 flag -- consolidatedAccounts itself is deliberately NOT,
+// since it's pure context and does not contribute to routing.
 
 import type { Client } from '@libsql/client'
+import { businessLineForcesManualReview } from './businessLine'
 
 const FLAG_KEYS = [
   'openClaim', 'premiumUnpaid', 'renewalTypeManual', 'systemListedCompany',
   'dnbNoMatch', 'dnbStatusInactive', 'dnbRatingBelowA', 'latestProfitNegative',
   'assetsMovedSignificant', 'dnbListedCompany',
+  'latestConsolidatedProfitNegative', 'consolidatedAssetsMovedSignificant',
 ] as const
 
 type PolicyRow = {
   id: string
   country: string
   routing: string | null
+  businessLine: string | null
 } & Record<(typeof FLAG_KEYS)[number], boolean>
 
 function isRpxId(id: string): boolean {
@@ -52,10 +64,11 @@ function anyFlagFired(row: PolicyRow): boolean {
   return FLAG_KEYS.some((key) => row[key])
 }
 
-// The routing a policy's id scheme + flags dictate. Null for a row whose id matches
-// neither known scheme -- nothing in this dataset should hit that, but it's reported
-// rather than silently skipped or guessed at.
+// The routing a policy's business line, id scheme, and flags dictate. Null for a row
+// whose id matches neither known scheme -- nothing in this dataset should hit that, but
+// it's reported rather than silently skipped or guessed at.
 function expectedRouting(row: PolicyRow): string | null {
+  if (businessLineForcesManualReview(row.businessLine)) return 'Manual Review'
   const anyFlag = anyFlagFired(row)
   if (isRpxId(row.id)) return anyFlag ? 'Manual Review' : 'RPUX Auto Renew'
   if (isNavinsId(row.id)) return anyFlag ? 'Manual Review' : 'NAVINS Renew'

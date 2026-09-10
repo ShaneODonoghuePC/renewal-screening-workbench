@@ -17,7 +17,7 @@ function main() {
   const raw = fs.readFileSync(seedPath, 'utf8')
   const policies = JSON.parse(raw)
 
-  const create = `-- Generated init SQL for Renewal Screening Workbench\n\nCREATE TABLE IF NOT EXISTS policies (\n  id TEXT PRIMARY KEY,\n  country TEXT,\n  customerName TEXT,\n  customerIdentifier TEXT,\n  brokerName TEXT,\n  renewalDate TEXT,\n  currency TEXT,\n  premium REAL,\n  openClaim INTEGER,\n  premiumUnpaid INTEGER,\n  renewalTypeManual INTEGER,\n  systemListedCompany INTEGER,\n  isFrame INTEGER,\n  dnbNoMatch INTEGER,\n  dnbStatusInactive INTEGER,\n  dnbRatingBelowA INTEGER,\n  latestProfitNegative INTEGER,\n  assetsMovedSignificant INTEGER,\n  dnbListedCompany INTEGER,\n  stage1FlagCount INTEGER,\n  stage2FlagCount INTEGER,\n  routing TEXT,\n  attention TEXT,\n  flagReasons TEXT,\n  dnbRating TEXT,\n  failureScorePercentile INTEGER,\n  latestNetIncome INTEGER,\n  assetsChangePercent INTEGER,\n  dnbOperatingStatusLabel TEXT,\n  dnbListedExchange TEXT\n);\n\nCREATE TABLE IF NOT EXISTS users (\n  id TEXT PRIMARY KEY,\n  name TEXT,\n  country TEXT\n);\n\nCREATE TABLE IF NOT EXISTS review_states (\n  policyId TEXT PRIMARY KEY,\n  status TEXT,\n  assignedUserId TEXT\n);\n\nCREATE TABLE IF NOT EXISTS comments (\n  id TEXT PRIMARY KEY,\n  policyId TEXT,\n  userId TEXT,\n  text TEXT,\n  createdAt TEXT\n);\n\nCREATE TABLE IF NOT EXISTS activity_log (\n  id TEXT PRIMARY KEY,\n  policyId TEXT,\n  eventType TEXT,\n  userId TEXT,\n  detail TEXT,\n  createdAt TEXT\n);\n\n`;
+  const create = `-- Generated init SQL for Renewal Screening Workbench\n\nCREATE TABLE IF NOT EXISTS policies (\n  id TEXT PRIMARY KEY,\n  country TEXT,\n  customerName TEXT,\n  customerIdentifier TEXT,\n  brokerName TEXT,\n  renewalDate TEXT,\n  currency TEXT,\n  premium REAL,\n  openClaim INTEGER,\n  premiumUnpaid INTEGER,\n  renewalTypeManual INTEGER,\n  systemListedCompany INTEGER,\n  isFrame INTEGER,\n  dnbNoMatch INTEGER,\n  dnbStatusInactive INTEGER,\n  dnbRatingBelowA INTEGER,\n  latestProfitNegative INTEGER,\n  assetsMovedSignificant INTEGER,\n  dnbListedCompany INTEGER,\n  consolidatedAccounts INTEGER,\n  latestConsolidatedProfitNegative INTEGER,\n  consolidatedAssetsMovedSignificant INTEGER,\n  businessLine TEXT,\n  stage1FlagCount INTEGER,\n  stage2FlagCount INTEGER,\n  routing TEXT,\n  attention TEXT,\n  flagReasons TEXT,\n  dnbRating TEXT,\n  failureScorePercentile INTEGER,\n  latestNetIncome INTEGER,\n  assetsChangePercent INTEGER,\n  dnbOperatingStatusLabel TEXT,\n  dnbListedExchange TEXT\n);\n\nCREATE TABLE IF NOT EXISTS users (\n  id TEXT PRIMARY KEY,\n  name TEXT,\n  country TEXT\n);\n\nCREATE TABLE IF NOT EXISTS review_states (\n  policyId TEXT PRIMARY KEY,\n  status TEXT,\n  assignedUserId TEXT\n);\n\nCREATE TABLE IF NOT EXISTS comments (\n  id TEXT PRIMARY KEY,\n  policyId TEXT,\n  userId TEXT,\n  text TEXT,\n  createdAt TEXT\n);\n\nCREATE TABLE IF NOT EXISTS activity_log (\n  id TEXT PRIMARY KEY,\n  policyId TEXT,\n  eventType TEXT,\n  userId TEXT,\n  detail TEXT,\n  createdAt TEXT\n);\n\n`;
 
   const countryUserIds: Record<string, string[]> = {
     DK: ['DK-U01', 'DK-U02', 'DK-U03'],
@@ -69,6 +69,10 @@ function main() {
       boolToInt(r.latestProfitNegative),
       boolToInt(r.assetsMovedSignificant),
       boolToInt(r.dnbListedCompany),
+      boolToInt(r.consolidatedAccounts),
+      boolToInt(r.latestConsolidatedProfitNegative),
+      boolToInt(r.consolidatedAssetsMovedSignificant),
+      esc(r.businessLine ?? 'D&O'),
       esc(r.stage1FlagCount ?? 0),
       esc(r.stage2FlagCount ?? 0),
       esc(r.routing),

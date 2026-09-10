@@ -20,6 +20,21 @@ export const policies = sqliteTable('policies', {
   latestProfitNegative: integer('latestProfitNegative', { mode: 'boolean' }).notNull().default(false),
   assetsMovedSignificant: integer('assetsMovedSignificant', { mode: 'boolean' }).notNull().default(false),
   dnbListedCompany: integer('dnbListedCompany', { mode: 'boolean' }).notNull().default(false),
+  // Consolidated-accounts trio (2026-09-11, SPEC.md S3.3): consolidatedAccounts is pure
+  // context (not scored, not in stage2FlagCount, no Flag Reasons entry -- render like
+  // isFrame, not like a Stage 2 flag). The other two DO score, same tier as the other
+  // Stage 2 flags. Invariant: the two dependent flags can only be true where
+  // consolidatedAccounts is true -- see scripts/lib/dnbRules.ts.
+  consolidatedAccounts: integer('consolidatedAccounts', { mode: 'boolean' }).notNull().default(false),
+  latestConsolidatedProfitNegative: integer('latestConsolidatedProfitNegative', { mode: 'boolean' }).notNull().default(false),
+  consolidatedAssetsMovedSignificant: integer('consolidatedAssetsMovedSignificant', { mode: 'boolean' }).notNull().default(false),
+  // Business line (2026-09-11, SPEC.md S3.1): conceptual scaffolding for a routing input
+  // that, in production, can force Manual Review on its own regardless of source system
+  // or flags (a real DK Property register is 100% Manual Review this way). D&O is the
+  // only business line modelled here, and D&O never forces review -- see
+  // scripts/lib/businessLine.ts. No UI surfaces this column; it exists so the routing
+  // rule reads a real field rather than assuming a single implicit business line.
+  businessLine: text('businessLine').notNull().default('D&O'),
   stage1FlagCount: integer('stage1FlagCount').notNull().default(0),
   stage2FlagCount: integer('stage2FlagCount').notNull().default(0),
   routing: text('routing'),

@@ -20,3 +20,12 @@ export function attentionOnlyFlags(flagReasons: string | null): string[] {
     .filter((flag) => flag.startsWith(ATTENTION_PREFIX))
     .map((flag) => flag.slice(ATTENTION_PREFIX.length))
 }
+
+// The complement of attentionOnlyFlags -- every fired flag that DOES get its own Y/N row
+// somewhere (FlagDetailPanel's two tables), in the same fixed rule order flagReasons
+// already carries them in. Used by RiskQualityPanel's "Flags Raised" inline summary
+// (2026-09-11) so that line and the Attention Flags line above it never repeat the same
+// entry -- each reason in flagReasons appears in exactly one of the two.
+export function scoringFlags(flagReasons: string | null): string[] {
+  return flagList(flagReasons).filter((flag) => !flag.startsWith(ATTENTION_PREFIX))
+}

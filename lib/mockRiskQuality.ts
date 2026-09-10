@@ -1,11 +1,13 @@
 export type Grade = 'A' | 'B' | 'C'
 
-// `details` is a list of short lines for the card's tooltip -- the specific fired
-// flags for Operational/Company & Financial, or a loss-ratio summary line for
-// Historical Performance. Rendered as a <ul>, never comma-joined (2026-09-09 --
-// momentum was removed from this type entirely; nothing else in the app consumed it,
-// so it isn't kept around as a dead field).
-export type DimensionGrade = { grade: Grade; details: string[] }
+// No `details` field (removed 2026-09-11) -- the per-card tooltips used to carry a
+// fired-flag list or loss-ratio summary line here, but that's now redundant with the
+// "Flags Raised" block (moved into the three-card section, SPEC.md S5.4) and was
+// dropped from every tooltip. The one exception -- the Company & Financial N/A
+// explanation -- isn't a DimensionGrade at all (that dimension is `null` when
+// Unverified); see unverifiedCompanyFinancialDetails below, called directly by
+// RiskQualityPanel only in that null case.
+export type DimensionGrade = { grade: Grade }
 
 export type RiskQualityInput = {
   id: string
@@ -21,6 +23,12 @@ export type RiskQualityInput = {
   latestProfitNegative: boolean
   assetsMovedSignificant: boolean
   dnbListedCompany: boolean
+  // Consolidated-accounts trio (2026-09-11, SPEC.md S3.3). consolidatedAccounts is pure
+  // context (not consumed by computeCompanyFinancialGrade below) -- present here only so
+  // callers can pass one policy object through. The other two DO score.
+  consolidatedAccounts: boolean
+  latestConsolidatedProfitNegative: boolean
+  consolidatedAssetsMovedSignificant: boolean
 }
 
 // One year of loss-ratio history, oldest -> newest. The newest year is the current,
@@ -100,9 +108,12 @@ export function computeOperationalGrade(policy: RiskQualityInput): Grade {
 }
 
 // Company & Financial grade, from the real Stage 2 flags -- D&B Listed Company and D&B
-// Status Inactive (added 2026-09-10) count alongside the other three (same tier, same
-// threshold rule), derived straight from the five boolean fields rather than the stored
-// stage2FlagCount column, which predates this field counting here and would undercount.
+// Status Inactive (added 2026-09-10), then Latest Consolidated Profit Negative and
+// Consolidated Assets Moved >25% YoY (added 2026-09-11) count alongside the other three
+// (same tier, same threshold rule) -- seven flags now, not four. Consolidated Accounts
+// itself does NOT count (pure context, SPEC.md S3.3). Derived straight from the boolean
+// fields rather than the stored stage2FlagCount column, which predates this field
+// counting here and would undercount.
 export function computeCompanyFinancialGrade(policy: RiskQualityInput): Grade {
   const flags = [
     policy.dnbStatusInactive,
@@ -110,38 +121,13 @@ export function computeCompanyFinancialGrade(policy: RiskQualityInput): Grade {
     policy.latestProfitNegative,
     policy.assetsMovedSignificant,
     policy.dnbListedCompany,
+    policy.latestConsolidatedProfitNegative,
+    policy.consolidatedAssetsMovedSignificant,
   ]
   const firedCount = flags.filter(Boolean).length
   if (firedCount >= 2) return 'C'
   if (firedCount === 1) return 'B'
   return 'A'
-}
-
-// Fired-flag labels for the Operational grade's tooltip, as a list -- not a
-// comma-joined string (2026-09-09). Same labels used in FlagDetailPanel/FlagRow, so
-// this never contradicts the flags shown elsewhere.
-function operationalDetails(policy: RiskQualityInput): string[] {
-  const fired: string[] = []
-  if (policy.openClaim) fired.push('Open Claim')
-  if (policy.premiumUnpaid) fired.push('Premium Unpaid')
-  if (policy.renewalTypeManual) fired.push('Renewal Type Manual')
-  if (policy.systemListedCompany) fired.push('System Listed Company')
-  return fired.length > 0 ? fired : ['No flags fired']
-}
-
-// Fired-flag labels for the Company & Financial grade's tooltip. When Unverified, the
-// grade itself is null and this is never called for the fired-flag case -- see
-// companyFinancialUnverifiedDetails below for what the tooltip shows instead. An
-// unexplained N/A is not acceptable now that the Data Verified pill (the only other
-// hint) is gone (2026-09-09) -- the explanation has to live here.
-function companyFinancialDetails(policy: RiskQualityInput): string[] {
-  const fired: string[] = []
-  if (policy.dnbStatusInactive) fired.push('D&B Status Inactive')
-  if (policy.dnbRatingBelowA) fired.push('D&B Rating Below A')
-  if (policy.latestProfitNegative) fired.push('Latest Profit Negative')
-  if (policy.assetsMovedSignificant) fired.push('Assets Moved >25% YoY')
-  if (policy.dnbListedCompany) fired.push('D&B Listed Company')
-  return fired.length > 0 ? fired : ['No flags fired']
 }
 
 // Plain-language explanation for why Company & Financial is N/A. computeDataConfidence's
@@ -195,14 +181,6 @@ export function historicalGradeScaleInfo(): string[] {
     `B = ${aMaxPercent}-${bMaxPercent}%.`,
     `C = over ${bMaxPercent}%.`,
   ]
-}
-
-// One-line tooltip detail for the Historical grade, tied to the All Years window --
-// still a list (of one line) for the same uniform-tooltip-rendering reason as the
-// other two dimensions, even though there's only ever one line to show here.
-function historicalDetails(allYears: LossRatioWindow): string[] {
-  const pct = Math.round(allYears.lossRatio * 100)
-  return [`All-years loss ratio: ${pct}%`]
 }
 
 // FNV-1a string hash -> deterministic per-policy seed, so the still-mocked fields below
@@ -403,20 +381,9 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
 
   return {
     verified,
-    operational: {
-      grade: operationalGrade,
-      details: operationalDetails(policy),
-    },
-    companyFinancial: companyFinancialGrade
-      ? {
-          grade: companyFinancialGrade,
-          details: companyFinancialDetails(policy),
-        }
-      : null,
-    historical: {
-      grade: historicalGrade,
-      details: historicalDetails(lossRatioHistory.allYears),
-    },
+    operational: { grade: operationalGrade },
+    companyFinancial: companyFinancialGrade ? { grade: companyFinancialGrade } : null,
+    historical: { grade: historicalGrade },
     lossRatioHistory,
     policyTenureYears,
     renewalEconomics: { expiringPremium, renewalPremium, movementPercent },

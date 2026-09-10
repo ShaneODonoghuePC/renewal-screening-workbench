@@ -1,9 +1,11 @@
-// Single source of truth for the D&B No Match invariant (SPEC.md S3.3/S7.1) and the
-// flagReasons/attention formulas that must agree with it -- shared by the data
-// generator (synthesizePlan.ts), the invariant fix-plan (fixNoMatchInvariantPlan.ts),
-// and the D&B rate-raising plan (raiseDnbRatesPlan.ts), so a generated row and a
-// hand-corrected existing row can never disagree about what their own fields mean.
-// Pure functions only -- no database or file access anywhere in this module.
+// Single source of truth for the D&B No Match invariant and the consolidated-accounts
+// invariant (SPEC.md S3.3/S7.1), and the flagReasons/attention formulas that must agree
+// with them -- shared by the data generator (synthesizePlan.ts), the two invariant
+// fix-plans (fixNoMatchInvariantPlan.ts, fixConsolidatedInvariantPlan.ts), and the
+// rate-raising plans (raiseDnbRatesPlan.ts, raiseConsolidatedRatesPlan.ts), so a
+// generated row and a hand-corrected existing row can never disagree about what their
+// own fields mean. Pure functions only -- no database or file access anywhere in this
+// module.
 
 export type DnbBooleans = {
   dnbNoMatch: boolean
@@ -22,10 +24,46 @@ export type DnbFigures = {
   dnbListedExchange: string | null
 }
 
+// Consolidated-accounts trio (SPEC.md S3.3, added 2026-09-11). consolidatedAccounts is
+// pure context -- excluded from STAGE2_SCORING_FLAG_KEYS below, from flagReasons, and
+// from routing (see scripts/lib/fixRoutingPlan.ts's own FLAG_KEYS). The other two DO
+// score and DO contribute to routing, same as any other Stage 2 flag.
+export type ConsolidatedBooleans = {
+  consolidatedAccounts: boolean
+  latestConsolidatedProfitNegative: boolean
+  consolidatedAssetsMovedSignificant: boolean
+}
+
 export const STAGE2_FLAG_KEYS: Array<keyof DnbBooleans> = [
   'dnbNoMatch', 'dnbStatusInactive', 'dnbRatingBelowA', 'latestProfitNegative',
   'assetsMovedSignificant', 'dnbListedCompany',
 ]
+
+// The two consolidated flags that score -- NOT consolidatedAccounts itself. Kept as a
+// separate list rather than folded into STAGE2_FLAG_KEYS so that list can stay typed as
+// exactly DnbBooleans's keys (the No Match invariant's own five dependent fields);
+// computeStage2FlagCount below is the one place both lists are combined.
+export const CONSOLIDATED_SCORING_FLAG_KEYS: Array<keyof ConsolidatedBooleans> = [
+  'latestConsolidatedProfitNegative', 'consolidatedAssetsMovedSignificant',
+]
+
+// SPEC.md S3.3: the two consolidated flags can only be true where consolidatedAccounts
+// is true -- the real engine leaves them BLANK (could not assess) rather than false when
+// no consolidated accounts exist; this prototype does not model blanks, so a false here
+// stands for "assessed and clean" OR "nothing to assess," collapsed into one value by
+// deliberate simplification (documented, not silently done). Pure: returns a corrected
+// copy, never mutates its argument.
+export function enforceConsolidatedInvariant<T extends ConsolidatedBooleans>(row: T): T {
+  if (row.consolidatedAccounts) return row
+  return { ...row, latestConsolidatedProfitNegative: false, consolidatedAssetsMovedSignificant: false }
+}
+
+// True if this row breaks the invariant above -- a consolidated dependent flag true
+// while consolidatedAccounts is false.
+export function violatesConsolidatedInvariant(row: ConsolidatedBooleans): boolean {
+  if (row.consolidatedAccounts) return false
+  return row.latestConsolidatedProfitNegative || row.consolidatedAssetsMovedSignificant
+}
 
 // SPEC.md S3.3: D&B No Match means D&B returned nothing about the company, so no other
 // Stage 2 flag can be true and no other Stage 2 figure can be populated -- there is no
@@ -61,14 +99,21 @@ export function violatesNoMatchInvariant(row: DnbBooleans & DnbFigures): boolean
   )
 }
 
-export function computeStage2FlagCount(row: DnbBooleans): number {
-  return STAGE2_FLAG_KEYS.filter((k) => row[k]).length
+// Widened to Record<string, unknown> (2026-09-11) rather than DnbBooleans, since the
+// tally now spans two separate boolean groups (DnbBooleans + the two scoring keys from
+// ConsolidatedBooleans) that share no single named type -- callers already pass full
+// PolicyRow-shaped objects satisfying both.
+export function computeStage2FlagCount(row: Record<string, unknown>): number {
+  return [...STAGE2_FLAG_KEYS, ...CONSOLIDATED_SCORING_FLAG_KEYS].filter((k) => row[k]).length
 }
 
 // Fixed rule order for flagReasons (SPEC.md S3.4) -- Stage 1 first, then Stage 2. D&B
 // Status Inactive's entry was added 2026-09-10 (previously missing from the generator
 // entirely -- a pre-existing gap that had never been exercised, since zero rows had
-// dnbStatusInactive true before this round).
+// dnbStatusInactive true before this round). The two consolidated entries were added
+// 2026-09-11, in the fixed order after D&B Listed Company (SPEC.md S3.3) --
+// consolidatedAccounts itself has NO entry here: it contributes no reason string by
+// design (pure context, not a scoring flag).
 export const FLAG_REASON_LABELS: Array<[string, string]> = [
   ['openClaim', 'Open Claim'],
   ['premiumUnpaid', 'Premium Unpaid'],
@@ -80,6 +125,8 @@ export const FLAG_REASON_LABELS: Array<[string, string]> = [
   ['latestProfitNegative', 'D&B Negative Profit'],
   ['assetsMovedSignificant', 'D&B Assets Moved >25% YoY'],
   ['dnbListedCompany', 'D&B Listed Company'],
+  ['latestConsolidatedProfitNegative', 'D&B Negative Profit (Consolidated)'],
+  ['consolidatedAssetsMovedSignificant', 'D&B Consolidated Assets Moved >25% YoY'],
 ]
 
 // Rebuilds the graded-flag portion of flagReasons from the row's own current booleans,

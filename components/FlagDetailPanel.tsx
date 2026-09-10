@@ -14,6 +14,9 @@ export type FlagEvidence = {
   latestProfitNegative: boolean
   assetsMovedSignificant: boolean
   dnbListedCompany: boolean
+  consolidatedAccounts: boolean
+  latestConsolidatedProfitNegative: boolean
+  consolidatedAssetsMovedSignificant: boolean
   dnbRating: string | null
   latestNetIncome: number | null
   assetsChangePercent: number | null
@@ -96,6 +99,20 @@ export default function FlagDetailPanel({
             severity="warning"
             unavailable={item.dnbNoMatch}
           />
+          {/* Consolidated-accounts trio (2026-09-11, SPEC.md S3.3), appended after D&B
+              Listed Company. Consolidated Accounts is rendered WITHOUT severity, the
+              same plain/muted treatment as Is Frame above -- it's pure context, not a
+              scoring flag, and must not read as one (this app has shipped that mistake
+              three times already: Is Frame, D&B Listed Company, D&B Status Inactive).
+              The other two DO score, so they get severity="warning" like their peers.
+              None of the three use `unavailable` -- that's specifically the No Match
+              invariant's rendering (dnbNoMatch), a different, unrelated gate; the
+              consolidated invariant's own simplification (the two dependent flags read
+              as a plain "N" when Consolidated Accounts is false) is deliberate, not a
+              gap -- see SPEC.md S3.3. */}
+          <FlagRow label="Consolidated Accounts" fired={item.consolidatedAccounts} />
+          <FlagRow label="Latest Consolidated Profit Negative" fired={item.latestConsolidatedProfitNegative} severity="warning" />
+          <FlagRow label="Consolidated Assets Moved >25% YoY" fired={item.consolidatedAssetsMovedSignificant} severity="warning" />
         </div>
       </div>
     </div>

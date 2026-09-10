@@ -29,7 +29,11 @@
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-FI-10002",
@@ -61,7 +65,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-FI-10003",
@@ -93,7 +101,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-FI-10004",
@@ -125,7 +137,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-FI-10005",
@@ -157,7 +173,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "FI-10.101-10006/25/01",
@@ -189,6 +209,10 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   }
 ]

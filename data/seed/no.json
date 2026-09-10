@@ -29,7 +29,11 @@
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10002/25/01",
@@ -61,7 +65,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10003/25/01",
@@ -93,7 +101,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10004/25/01",
@@ -125,7 +137,11 @@
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10005/25/01",
@@ -148,16 +164,20 @@
     "assetsMovedSignificant": true,
     "dnbListedCompany": false,
     "stage1FlagCount": 0,
-    "stage2FlagCount": 2,
+    "stage2FlagCount": 3,
     "routing": "Manual Review",
     "attention": "Medium",
-    "flagReasons": "D&B Status Inactive, D&B Assets Moved >25% YoY",
+    "flagReasons": "D&B Status Inactive, D&B Assets Moved >25% YoY, D&B Negative Profit (Consolidated)",
     "dnbRating": "AA2",
     "failureScorePercentile": 60,
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Inactive",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": true,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10006/25/01",
@@ -189,7 +209,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10007/25/01",
@@ -221,7 +245,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10008/25/01",
@@ -253,7 +281,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10009/25/01",
@@ -285,7 +317,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": "NASDAQ"
+    "dnbListedExchange": "NASDAQ",
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10010/25/01",
@@ -317,7 +353,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10011/25/01",
@@ -349,7 +389,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": "NASDAQ"
+    "dnbListedExchange": "NASDAQ",
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10012/25/01",
@@ -381,7 +425,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10013/25/01",
@@ -413,7 +461,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Inactive",
-    "dnbListedExchange": "NASDAQ"
+    "dnbListedExchange": "NASDAQ",
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10014/25/01",
@@ -445,7 +497,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10015",
@@ -477,7 +533,11 @@
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10016",
@@ -509,7 +569,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10017",
@@ -541,7 +605,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10018",
@@ -573,7 +641,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10019",
@@ -605,7 +677,11 @@
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10020",
@@ -637,7 +713,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10021",
@@ -669,7 +749,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10022",
@@ -701,7 +785,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10023",
@@ -733,7 +821,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10024",
@@ -765,7 +857,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10025",
@@ -788,16 +884,20 @@
     "assetsMovedSignificant": true,
     "dnbListedCompany": false,
     "stage1FlagCount": 1,
-    "stage2FlagCount": 1,
+    "stage2FlagCount": 2,
     "routing": "Manual Review",
     "attention": "Medium",
-    "flagReasons": "RPUX set to Manual, D&B Assets Moved >25% YoY, Attention: D&B Predictor Concern",
+    "flagReasons": "RPUX set to Manual, D&B Assets Moved >25% YoY, D&B Negative Profit (Consolidated), Attention: D&B Predictor Concern",
     "dnbRating": "AA2",
     "failureScorePercentile": 25,
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": true,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10026",
@@ -820,16 +920,20 @@
     "assetsMovedSignificant": false,
     "dnbListedCompany": false,
     "stage1FlagCount": 1,
-    "stage2FlagCount": 0,
+    "stage2FlagCount": 1,
     "routing": "Manual Review",
     "attention": "Medium",
-    "flagReasons": "RPUX set to Manual",
+    "flagReasons": "RPUX set to Manual, D&B Negative Profit (Consolidated)",
     "dnbRating": "AA2",
     "failureScorePercentile": 60,
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": true,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10027",
@@ -861,7 +965,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10028",
@@ -893,7 +1001,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10029",
@@ -925,7 +1037,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10030",
@@ -957,7 +1073,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10031",
@@ -989,7 +1109,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10032",
@@ -1021,7 +1145,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10033",
@@ -1053,7 +1181,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10034",
@@ -1085,7 +1217,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10035",
@@ -1117,7 +1253,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10036",
@@ -1149,7 +1289,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10037",
@@ -1181,7 +1325,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10038",
@@ -1213,7 +1361,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10039",
@@ -1245,7 +1397,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10040",
@@ -1277,7 +1433,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10041",
@@ -1309,7 +1469,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10042",
@@ -1341,7 +1505,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10043",
@@ -1373,7 +1541,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Inactive",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10044",
@@ -1396,16 +1568,20 @@
     "assetsMovedSignificant": false,
     "dnbListedCompany": false,
     "stage1FlagCount": 0,
-    "stage2FlagCount": 0,
-    "routing": "RPUX Auto Renew",
+    "stage2FlagCount": 1,
+    "routing": "Manual Review",
     "attention": "None",
-    "flagReasons": "",
+    "flagReasons": "D&B Negative Profit (Consolidated)",
     "dnbRating": "AA2",
     "failureScorePercentile": 60,
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": true,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10045",
@@ -1437,7 +1613,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10046",
@@ -1469,7 +1649,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10047",
@@ -1501,7 +1685,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10048",
@@ -1533,7 +1721,11 @@
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10049",
@@ -1565,7 +1757,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10050",
@@ -1597,7 +1793,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10051",
@@ -1629,7 +1829,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10052",
@@ -1661,7 +1865,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10053",
@@ -1693,7 +1901,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10054",
@@ -1725,7 +1937,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10055",
@@ -1757,7 +1973,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10056",
@@ -1789,7 +2009,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10057",
@@ -1821,7 +2045,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10058",
@@ -1853,7 +2081,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10059",
@@ -1879,13 +2111,17 @@
     "stage2FlagCount": 0,
     "routing": "RPUX Auto Renew",
     "attention": "None",
-    "flagReasons": "",
+    "flagReasons": null,
     "dnbRating": "AA2",
     "failureScorePercentile": 60,
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10060",
@@ -1917,7 +2153,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10061",
@@ -1949,7 +2189,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10062",
@@ -1981,7 +2225,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10063",
@@ -2013,7 +2261,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10064",
@@ -2036,16 +2288,20 @@
     "assetsMovedSignificant": false,
     "dnbListedCompany": false,
     "stage1FlagCount": 0,
-    "stage2FlagCount": 0,
-    "routing": "RPUX Auto Renew",
+    "stage2FlagCount": 2,
+    "routing": "Manual Review",
     "attention": "None",
-    "flagReasons": "",
+    "flagReasons": "D&B Negative Profit (Consolidated), D&B Consolidated Assets Moved >25% YoY",
     "dnbRating": "AA2",
     "failureScorePercentile": 60,
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": true,
+    "consolidatedAssetsMovedSignificant": true,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10065",
@@ -2077,7 +2333,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10066",
@@ -2109,7 +2369,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10067",
@@ -2141,7 +2405,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10068",
@@ -2164,16 +2432,20 @@
     "assetsMovedSignificant": false,
     "dnbListedCompany": false,
     "stage1FlagCount": 1,
-    "stage2FlagCount": 1,
+    "stage2FlagCount": 3,
     "routing": "Manual Review",
     "attention": "High",
-    "flagReasons": "Premium Unpaid, D&B No Match",
+    "flagReasons": "Premium Unpaid, D&B No Match, D&B Negative Profit (Consolidated), D&B Consolidated Assets Moved >25% YoY",
     "dnbRating": null,
     "failureScorePercentile": 60,
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": true,
+    "consolidatedAssetsMovedSignificant": true,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10069",
@@ -2205,7 +2477,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10070",
@@ -2231,13 +2507,17 @@
     "stage2FlagCount": 0,
     "routing": "RPUX Auto Renew",
     "attention": "None",
-    "flagReasons": "",
+    "flagReasons": null,
     "dnbRating": "AA2",
     "failureScorePercentile": 60,
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10071",
@@ -2263,13 +2543,17 @@
     "stage2FlagCount": 0,
     "routing": "RPUX Auto Renew",
     "attention": "None",
-    "flagReasons": "",
+    "flagReasons": null,
     "dnbRating": "AA2",
     "failureScorePercentile": 60,
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10072",
@@ -2301,7 +2585,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10073",
@@ -2333,7 +2621,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10074",
@@ -2365,7 +2657,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10075",
@@ -2397,7 +2693,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10076",
@@ -2429,7 +2729,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10077",
@@ -2461,7 +2765,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10078",
@@ -2493,7 +2801,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10079",
@@ -2525,7 +2837,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10080",
@@ -2557,7 +2873,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10081",
@@ -2583,13 +2903,17 @@
     "stage2FlagCount": 0,
     "routing": "RPUX Auto Renew",
     "attention": "None",
-    "flagReasons": "",
+    "flagReasons": null,
     "dnbRating": "AA2",
     "failureScorePercentile": 60,
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10082",
@@ -2621,7 +2945,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10083",
@@ -2653,7 +2981,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10084",
@@ -2685,7 +3017,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10085",
@@ -2717,7 +3053,11 @@
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10086",
@@ -2749,7 +3089,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10087",
@@ -2781,7 +3125,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10088",
@@ -2813,7 +3161,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10089",
@@ -2845,7 +3197,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10090",
@@ -2877,7 +3233,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10091",
@@ -2909,7 +3269,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10092",
@@ -2932,16 +3296,20 @@
     "assetsMovedSignificant": false,
     "dnbListedCompany": false,
     "stage1FlagCount": 0,
-    "stage2FlagCount": 0,
-    "routing": "RPUX Auto Renew",
+    "stage2FlagCount": 1,
+    "routing": "Manual Review",
     "attention": "None",
-    "flagReasons": "",
+    "flagReasons": "D&B Negative Profit (Consolidated)",
     "dnbRating": "AA2",
     "failureScorePercentile": 60,
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": true,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10093",
@@ -2973,7 +3341,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10094",
@@ -3005,7 +3377,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10095",
@@ -3037,7 +3413,11 @@
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10096",
@@ -3069,7 +3449,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10097",
@@ -3101,7 +3485,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10098",
@@ -3133,7 +3521,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10099",
@@ -3165,7 +3557,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10100",
@@ -3197,7 +3593,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10101",
@@ -3229,7 +3629,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10102",
@@ -3261,7 +3665,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10103",
@@ -3293,7 +3701,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10104",
@@ -3325,7 +3737,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10105",
@@ -3357,7 +3773,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10106",
@@ -3389,7 +3809,11 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10107",
@@ -3421,7 +3845,11 @@
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10108",
@@ -3453,7 +3881,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10109",
@@ -3476,16 +3908,20 @@
     "assetsMovedSignificant": false,
     "dnbListedCompany": false,
     "stage1FlagCount": 1,
-    "stage2FlagCount": 1,
+    "stage2FlagCount": 2,
     "routing": "Manual Review",
     "attention": "Medium",
-    "flagReasons": "RPUX set to Manual, D&B No Match",
+    "flagReasons": "RPUX set to Manual, D&B No Match, D&B Negative Profit (Consolidated)",
     "dnbRating": null,
     "failureScorePercentile": 60,
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": true,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10110",
@@ -3508,16 +3944,20 @@
     "assetsMovedSignificant": false,
     "dnbListedCompany": false,
     "stage1FlagCount": 1,
-    "stage2FlagCount": 1,
+    "stage2FlagCount": 2,
     "routing": "Manual Review",
     "attention": "Medium",
-    "flagReasons": "RPUX set to Manual, D&B No Match",
+    "flagReasons": "RPUX set to Manual, D&B No Match, D&B Consolidated Assets Moved >25% YoY",
     "dnbRating": null,
     "failureScorePercentile": 60,
     "latestNetIncome": null,
     "assetsChangePercent": null,
     "dnbOperatingStatusLabel": null,
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": true,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": true,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10111",
@@ -3549,7 +3989,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10112",
@@ -3581,7 +4025,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "RPX-NO-10113",
@@ -3613,7 +4061,11 @@
     "latestNetIncome": 140000,
     "assetsChangePercent": 30,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   },
   {
     "id": "NO-10.101-10114/25/01",
@@ -3645,6 +4097,10 @@
     "latestNetIncome": -140000,
     "assetsChangePercent": 12,
     "dnbOperatingStatusLabel": "Active",
-    "dnbListedExchange": null
+    "dnbListedExchange": null,
+    "consolidatedAccounts": false,
+    "latestConsolidatedProfitNegative": false,
+    "consolidatedAssetsMovedSignificant": false,
+    "businessLine": "D&O"
   }
 ]

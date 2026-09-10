@@ -68,7 +68,9 @@ async function main() {
     const cols = [
       'id','country','customerName','customerIdentifier','brokerName','renewalDate','currency','premium',
       'openClaim','premiumUnpaid','renewalTypeManual','systemListedCompany','isFrame','dnbNoMatch','dnbStatusInactive',
-      'dnbRatingBelowA','latestProfitNegative','assetsMovedSignificant','dnbListedCompany','stage1FlagCount','stage2FlagCount',
+      'dnbRatingBelowA','latestProfitNegative','assetsMovedSignificant','dnbListedCompany',
+      'consolidatedAccounts','latestConsolidatedProfitNegative','consolidatedAssetsMovedSignificant','businessLine',
+      'stage1FlagCount','stage2FlagCount',
       'routing','attention','flagReasons','dnbRating','failureScorePercentile','latestNetIncome','assetsChangePercent','dnbOperatingStatusLabel','dnbListedExchange'
     ]
     const placeholders = cols.map(()=>'?').join(',')
@@ -94,6 +96,10 @@ async function main() {
       p.latestProfitNegative ? 1 : 0,
       p.assetsMovedSignificant ? 1 : 0,
       p.dnbListedCompany ? 1 : 0,
+      p.consolidatedAccounts ? 1 : 0,
+      p.latestConsolidatedProfitNegative ? 1 : 0,
+      p.consolidatedAssetsMovedSignificant ? 1 : 0,
+      p.businessLine || 'D&O',
       p.stage1FlagCount ?? 0,
       p.stage2FlagCount ?? 0,
       p.routing || null,

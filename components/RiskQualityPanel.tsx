@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { formatCurrency, formatCompactCurrency, EMPTY_VALUE } from '@/lib/format'
 import { getRiskQuality, unverifiedCompanyFinancialDetails, historicalGradeScaleInfo, type Grade } from '@/lib/mockRiskQuality'
-import { attentionOnlyFlags } from '@/lib/flags'
+import { attentionOnlyFlags, scoringFlags } from '@/lib/flags'
 import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel'
 
 type PolicyDetail = FlagEvidence & {
@@ -75,12 +75,17 @@ function GradeCard({
   label,
   scaleInfo,
   grade,
-  details,
+  unverifiedReason,
 }: {
   label: string
   scaleInfo: string[]
   grade: Grade | null
-  details: string[]
+  // Only ever passed (and only ever rendered) when grade is null -- the Company &
+  // Financial N/A explanation (2026-09-11: the fired-flag detail list every card used to
+  // carry here is gone; "Flags Raised," moved into this same three-card section below,
+  // is where fired flags live now). Operational and Historical never pass this, since
+  // their grade is never null.
+  unverifiedReason?: string[]
 }) {
   return (
     <div className="relative rounded-md border border-slate-200 bg-white p-3 text-center">
@@ -98,16 +103,18 @@ function GradeCard({
           role="tooltip"
           className="invisible absolute right-0 top-full z-30 mt-2 w-48 -translate-y-1 rounded-lg border border-slate-200 bg-white p-2 text-left text-xs text-slate-700 opacity-0 shadow-lg transition duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
         >
-          <div className="mb-1.5 space-y-0.5 font-semibold text-slate-900">
+          <div className={`space-y-0.5 font-semibold text-slate-900 ${unverifiedReason?.length ? 'mb-1.5' : ''}`}>
             {scaleInfo.map((line, i) => (
               <p key={i}>{line}</p>
             ))}
           </div>
-          <ul className="list-disc space-y-0.5 pl-4">
-            {details.map((detail, i) => (
-              <li key={i}>{detail}</li>
-            ))}
-          </ul>
+          {unverifiedReason && unverifiedReason.length > 0 && (
+            <ul className="list-disc space-y-0.5 pl-4">
+              {unverifiedReason.map((reason, i) => (
+                <li key={i}>{reason}</li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -258,9 +265,11 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
   // parsed flagReasons, and this panel had no equivalent -- see the standalone
   // "Flags Raised: <flagReasons>" line this replaces, below).
   const attentionFlags = attentionOnlyFlags(policy.flagReasons)
+  const firedFlags = scoringFlags(policy.flagReasons)
 
   return (
-    <div className="space-y-6">
+    <div className="rounded-lg bg-slate-50 p-4 md:p-6">
+      <div className="space-y-6">
       {/* Header -- title only. The Data Verified/Attention pills that used to live
           here were removed 2026-09-09; the D&B-no-match explanation that was the
           pill's only real purpose now lives in the Company & Financial card's own
@@ -273,7 +282,12 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
       {/* The three graded dimension cards -- no section header, no headline, promoted
           to the very top of the panel body (2026-09-09). Still wrapped in the
           worst-of-three colored box (unchanged since 2026-07-22): one C anywhere
-          turns the whole box red even if the other two are A. */}
+          turns the whole box red even if the other two are A. "Flags Raised" (2026-09-11,
+          moved back into this section from its own standalone section below -- see the
+          block after the card grid) sits at the bottom of the same box, left-aligned,
+          in the "header: list" inline style the very first version of this summary
+          used, rather than as itemized Y/N rows -- those still live in FlagDetailPanel,
+          reached via the Underwriter Workspace/table expand-row, not duplicated here. */}
       <section className={`rounded-lg border p-4 shadow-sm ${riskQualitySectionClasses(sectionGrade)}`}>
         <div className="grid gap-3 sm:grid-cols-3">
           <GradeCard
@@ -284,62 +298,85 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
               'C = Open Claim, Premium Unpaid, or 2+ flags fired.',
             ]}
             grade={riskQuality.operational.grade}
-            details={riskQuality.operational.details}
           />
           <GradeCard
             label="Company & Financial"
             scaleInfo={[
               'A = no Company & Financial Flags fired.',
               'B = exactly one flag.',
-              'C = two or more of D&B Status Inactive, D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company.',
+              'C = two or more of D&B Status Inactive, D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, D&B Listed Company, Latest Consolidated Profit Negative, or Consolidated Assets Moved >25% YoY.',
             ]}
             grade={riskQuality.companyFinancial?.grade ?? null}
-            details={riskQuality.companyFinancial?.details ?? unverifiedCompanyFinancialDetails(policy)}
+            unverifiedReason={riskQuality.companyFinancial ? undefined : unverifiedCompanyFinancialDetails(policy)}
           />
           <GradeCard
             label="Historical Performance"
             scaleInfo={historicalGradeScaleInfo()}
             grade={riskQuality.historical.grade}
-            details={riskQuality.historical.details}
           />
+        </div>
+
+        <div className="mt-4 border-t border-slate-200/70 pt-4 text-left">
+          {attentionFlags.length > 0 && (
+            <p className="mb-1 text-sm">
+              <span className="font-semibold text-slate-900">Attention Flags: </span>
+              <span className="text-slate-700">{attentionFlags.join(', ')}</span>
+            </p>
+          )}
+          <p className="text-sm">
+            <span className="font-semibold text-slate-900">Flags Raised: </span>
+            <span className="text-slate-700">{firedFlags.length > 0 ? firedFlags.join(', ') : 'None'}</span>
+          </p>
         </div>
       </section>
 
-      {/* Two-column section: Identity & Context (left) / Renewal Financials (right). */}
+      {/* Two-column section: Identity & Context (left) / Renewal Financials (right).
+          Each column boxed to match FlagDetailPanel's own flex flex-col + flex-1 box
+          treatment (2026-09-11, components/FlagDetailPanel.tsx) -- flex-1 on the inner
+          box is what makes the shorter column (Renewal Financials, 3 rows) stretch to
+          match the taller one (Identity & Context, 6 rows) rather than trailing off
+          with blank space beside it. The h2 headings stay above the boxes, unchanged
+          size (text-lg) -- FlagDetailPanel's own headings are h3/text-sm, a genuine
+          size difference between the two box styles left as-is pending a call from
+          Shane on whether it should be reconciled. */}
       <div className="grid gap-8 border-b border-slate-200 pb-6 md:grid-cols-2">
-        <section>
+        <section className="flex flex-col">
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
-          <dl>
-            <InfoRow label="Policy Number" value={policy.id} />
-            <InfoRow label="VAT Number" value={policy.customerIdentifier} />
-            <InfoRow label="Customer Name" value={policy.customerName} />
-            <InfoRow label="Broker Name" value={policy.brokerName} />
-            <InfoRow label="Current Term End Date" value={formatDate(policy.renewalDate)} />
-            <InfoRow label="Policy Tenure" value={`${riskQuality.policyTenureYears} year${riskQuality.policyTenureYears === 1 ? '' : 's'}`} />
-          </dl>
+          <div className="flex-1 rounded-md border border-slate-200 bg-white p-4">
+            <dl>
+              <InfoRow label="Policy Number" value={policy.id} />
+              <InfoRow label="VAT Number" value={policy.customerIdentifier} />
+              <InfoRow label="Customer Name" value={policy.customerName} />
+              <InfoRow label="Broker Name" value={policy.brokerName} />
+              <InfoRow label="Current Term End Date" value={formatDate(policy.renewalDate)} />
+              <InfoRow label="Policy Tenure" value={`${riskQuality.policyTenureYears} year${riskQuality.policyTenureYears === 1 ? '' : 's'}`} />
+            </dl>
+          </div>
         </section>
 
-        <section>
+        <section className="flex flex-col">
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Renewal Financials</h2>
-          <dl>
-            <InfoRow
-              label="Expiring Premium"
-              value={`${formatCurrency(riskQuality.renewalEconomics.expiringPremium, policy.currency)} (${expiringYear})`}
-            />
-            <InfoRow
-              label="Proposed Premium"
-              value={`${formatCurrency(riskQuality.renewalEconomics.renewalPremium, policy.currency)} (${renewalYear})`}
-            />
-            <InfoRow
-              label="% change"
-              value={
-                <span className={riskQuality.renewalEconomics.movementPercent >= 0 ? 'text-brand' : 'text-slate-600'}>
-                  {riskQuality.renewalEconomics.movementPercent >= 0 ? '+' : ''}
-                  {riskQuality.renewalEconomics.movementPercent}%
-                </span>
-              }
-            />
-          </dl>
+          <div className="flex-1 rounded-md border border-slate-200 bg-white p-4">
+            <dl>
+              <InfoRow
+                label="Expiring Premium"
+                value={`${formatCurrency(riskQuality.renewalEconomics.expiringPremium, policy.currency)} (${expiringYear})`}
+              />
+              <InfoRow
+                label="Proposed Premium"
+                value={`${formatCurrency(riskQuality.renewalEconomics.renewalPremium, policy.currency)} (${renewalYear})`}
+              />
+              <InfoRow
+                label="% change"
+                value={
+                  <span className={riskQuality.renewalEconomics.movementPercent >= 0 ? 'text-brand' : 'text-slate-600'}>
+                    {riskQuality.renewalEconomics.movementPercent >= 0 ? '+' : ''}
+                    {riskQuality.renewalEconomics.movementPercent}%
+                  </span>
+                }
+              />
+            </dl>
+          </div>
         </section>
       </div>
 
@@ -351,28 +388,14 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         <LossRatioTable oneYear={oneYear} twoYear={twoYear} threeYear={threeYear} allYears={allYears} currency={policy.currency} />
       </section>
 
-      {/* "Flags Raised" is now the shared section header for the whole detailed-flag
-          area (2026-09-10) -- the standalone "Flags Raised: <flagReasons>" summary
-          line this replaced is gone entirely; it was pure duplication of the two
-          itemized tables below for every flag that has a Y/N row. The one thing it
-          covered that the tables genuinely don't is the four attention-only signals
-          (SPEC.md S3.2) -- those get their own "Attention Flags" sub-header, in the
-          same inline "header: list" style the old line used, directly under "Flags
-          Raised" and above the tables (rather than after them: it reads as scene-
-          setting for the itemized breakdown below it, the same role "Flags Raised"
-          itself used to play when it sat above the tables, 2026-09-09-to-10). Rendered
-          only when at least one attention-only flag is present -- no empty state, no
-          dash, when there are none. */}
+      {/* The itemized Y/N flag breakdown -- no "Flags Raised" header above it any more
+          (2026-09-11: that name now lives exactly once, in the three-card section
+          above). The two tables keep their own h3 headings (Operational Review Flags /
+          Company & Financial Flags), which is label enough on its own. */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Flags Raised</h2>
-        {attentionFlags.length > 0 && (
-          <p className="mb-3 text-sm">
-            <span className="font-semibold text-slate-900">Attention Flags: </span>
-            <span className="text-slate-700">{attentionFlags.join(', ')}</span>
-          </p>
-        )}
         <FlagDetailPanel item={policy} stage1Heading="Operational Review Flags" stage2Heading="Company & Financial Flags" />
       </section>
+      </div>
     </div>
   )
 }
@@ -398,10 +421,17 @@ function LossRatioTable({
   const windows = [oneYear, twoYear, threeYear, allYears]
 
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-200">
+    <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
       <table className="w-full text-sm">
         <tbody className="divide-y divide-slate-100">
-          <tr className="bg-slate-50">
+          {/* Fills swapped 2026-09-11: header row is now the darker of the two
+              (bg-slate-100), Loss Ratio the lighter (bg-slate-50) -- was the other way
+              round. Both against the explicit bg-white on this wrapper above (added in
+              the same pass, 2026-09-11) so this table stays white now that the panel
+              around it has its own subtle bg-slate-50 fill -- without it, the unstyled
+              rows below (Claims Incurred etc.) would show the panel's tint through the
+              table's own transparent background. */}
+          <tr className="bg-slate-100">
             <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-500"></td>
             {windows.map((w) => (
               <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right font-medium text-slate-900">
@@ -409,7 +439,7 @@ function LossRatioTable({
               </td>
             ))}
           </tr>
-          <tr className="bg-slate-100 font-semibold text-slate-900">
+          <tr className="bg-slate-50 font-semibold text-slate-900">
             <td className="whitespace-nowrap px-4 py-2">Loss Ratio</td>
             {windows.map((w) => (
               <td key={w.label} className="whitespace-nowrap px-4 py-2 text-right">

@@ -16,7 +16,8 @@
 // See the top of synthesize-data.ts for the full rationale behind both fixes.
 
 import type { Client } from '@libsql/client'
-import { enforceNoMatchInvariant, FLAG_REASON_LABELS, computeAttention } from './dnbRules'
+import { enforceNoMatchInvariant, enforceConsolidatedInvariant, FLAG_REASON_LABELS, computeAttention, computeStage2FlagCount } from './dnbRules'
+import { businessLineForcesManualReview } from './businessLine'
 
 const COUNTRIES = ['DK', 'NO', 'SE', 'FI'] as const
 export type Country = (typeof COUNTRIES)[number]
@@ -119,6 +120,10 @@ export type PolicyRow = {
   latestProfitNegative: boolean
   assetsMovedSignificant: boolean
   dnbListedCompany: boolean
+  consolidatedAccounts: boolean
+  latestConsolidatedProfitNegative: boolean
+  consolidatedAssetsMovedSignificant: boolean
+  businessLine: string
   routing: string
   attention: string | null
   flagReasons: string | null
@@ -252,9 +257,22 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
       'openClaim', 'premiumUnpaid', 'renewalTypeManual', 'systemListedCompany',
       'dnbNoMatch', 'dnbStatusInactive', 'dnbRatingBelowA', 'latestProfitNegative',
       'assetsMovedSignificant', 'dnbListedCompany',
+      'consolidatedAccounts', 'latestConsolidatedProfitNegative', 'consolidatedAssetsMovedSignificant',
     ]
     const flagRates: Record<string, number> = {}
     for (const key of flagKeys) flagRates[key as string] = rows.filter((r) => r[key]).length / rows.length
+    // Consolidated dependent-flag rates need to be OF the consolidated pool, not of all
+    // rows -- flagRates above (rows.filter/rows.length) would understate them once most
+    // rows have consolidatedAccounts=false. Recomputed here as a fraction of the
+    // consolidated subset specifically (falls back to the target design rates if this
+    // country currently has zero consolidated rows to measure from).
+    const consolidatedRows = rows.filter((r) => r.consolidatedAccounts)
+    const consolidatedProfitNegRate = consolidatedRows.length > 0
+      ? consolidatedRows.filter((r) => r.latestConsolidatedProfitNegative).length / consolidatedRows.length
+      : 0.4
+    const consolidatedAssetsMovedRate = consolidatedRows.length > 0
+      ? consolidatedRows.filter((r) => r.consolidatedAssetsMovedSignificant).length / consolidatedRows.length
+      : 0.15
 
     const predictorRate = rows.filter((r) => (r.flagReasons ?? '').includes('Predictor Concern')).length / rows.length
     const significantRate = rows.filter((r) => (r.flagReasons ?? '').includes('Significant Event')).length / rows.length
@@ -307,9 +325,30 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
           dnbListedExchange: null,
         })
         const { dnbStatusInactive, dnbRatingBelowA, latestProfitNegative, assetsMovedSignificant, dnbListedCompany } = drawn
+
+        // Consolidated-accounts trio (SPEC.md S3.3, added 2026-09-11): consolidatedAccounts
+        // drawn first, the two dependent flags then drawn from the consolidated-only rates
+        // computed above and immediately corrected through enforceConsolidatedInvariant --
+        // same "draw independently, enforce the dependency right after" shape as the No
+        // Match invariant above. consolidatedAccounts itself is pure context: it does NOT
+        // participate in anyFlagFired below, matching its exclusion from routing/tally.
+        const consolidatedDrawn = enforceConsolidatedInvariant({
+          consolidatedAccounts: bernoulli(rowRand, flagRates.consolidatedAccounts),
+          latestConsolidatedProfitNegative: bernoulli(rowRand, consolidatedProfitNegRate),
+          consolidatedAssetsMovedSignificant: bernoulli(rowRand, consolidatedAssetsMovedRate),
+        })
+        const { consolidatedAccounts, latestConsolidatedProfitNegative, consolidatedAssetsMovedSignificant } = consolidatedDrawn
+
         const anyFlagFired = openClaim || premiumUnpaid || renewalTypeManual || systemListedCompany
           || dnbNoMatch || dnbStatusInactive || dnbRatingBelowA || latestProfitNegative
           || assetsMovedSignificant || dnbListedCompany
+          || latestConsolidatedProfitNegative || consolidatedAssetsMovedSignificant
+
+        // Business line (SPEC.md S3.1, added 2026-09-11): D&O is the only business line
+        // this generator models, and D&O never forces review -- businessLineForcesManualReview
+        // is checked first anyway, so the routing rule reads a real field rather than
+        // assuming a single implicit business line, even though it's a no-op today.
+        const businessLine = 'D&O'
 
         // Source system is sampled first (from this country's original RPX-vs-Navins
         // proportion), then id and routing both follow deterministically from source
@@ -320,7 +359,9 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
         const id = sourceSystem === 'rpx'
           ? `RPX-${country}-${String(nextRpxNumber++).padStart(5, '0')}`
           : `${country}-10.101-${String(nextNavinsNumber++).padStart(5, '0')}/25/01`
-        const routing = anyFlagFired ? 'Manual Review' : (sourceSystem === 'rpx' ? 'RPUX Auto Renew' : 'NAVINS Renew')
+        const routing = businessLineForcesManualReview(businessLine)
+          ? 'Manual Review'
+          : anyFlagFired ? 'Manual Review' : (sourceSystem === 'rpx' ? 'RPUX Auto Renew' : 'NAVINS Renew')
         const isClean = !anyFlagFired
 
         const newRow: PolicyRow = {
@@ -343,6 +384,10 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
           latestProfitNegative,
           assetsMovedSignificant,
           dnbListedCompany,
+          consolidatedAccounts,
+          latestConsolidatedProfitNegative,
+          consolidatedAssetsMovedSignificant,
+          businessLine,
           routing,
           attention: null,
           flagReasons: null,
@@ -481,15 +526,17 @@ export async function applySynthesizePlan(db: Client, plan: SynthesizePlan) {
         id, country, customerName, customerIdentifier, brokerName, renewalDate, currency, premium,
         openClaim, premiumUnpaid, renewalTypeManual, systemListedCompany, isFrame,
         dnbNoMatch, dnbStatusInactive, dnbRatingBelowA, latestProfitNegative, assetsMovedSignificant, dnbListedCompany,
+        consolidatedAccounts, latestConsolidatedProfitNegative, consolidatedAssetsMovedSignificant, businessLine,
         stage1FlagCount, stage2FlagCount, routing, attention, flagReasons,
         dnbRating, failureScorePercentile, latestNetIncome, assetsChangePercent, dnbOperatingStatusLabel, dnbListedExchange
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         row.id, row.country, row.customerName, row.customerIdentifier, row.brokerName, row.renewalDate, row.currency, row.premium,
         row.openClaim, row.premiumUnpaid, row.renewalTypeManual, row.systemListedCompany, row.isFrame,
         row.dnbNoMatch, row.dnbStatusInactive, row.dnbRatingBelowA, row.latestProfitNegative, row.assetsMovedSignificant, row.dnbListedCompany,
+        row.consolidatedAccounts, row.latestConsolidatedProfitNegative, row.consolidatedAssetsMovedSignificant, row.businessLine,
         [row.openClaim, row.premiumUnpaid, row.renewalTypeManual, row.systemListedCompany].filter(Boolean).length,
-        [row.dnbNoMatch, row.dnbStatusInactive, row.dnbRatingBelowA, row.latestProfitNegative, row.assetsMovedSignificant, row.dnbListedCompany].filter(Boolean).length,
+        computeStage2FlagCount(row),
         row.routing, row.attention, row.flagReasons,
         row.dnbRating, row.failureScorePercentile, row.latestNetIncome, row.assetsChangePercent, row.dnbOperatingStatusLabel, row.dnbListedExchange,
       ],
