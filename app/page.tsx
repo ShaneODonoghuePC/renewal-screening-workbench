@@ -7,6 +7,7 @@ import { buildMonthTabs } from '@/lib/monthTabs'
 import { isTerminalStatus } from '@/lib/statusWorkflow'
 import { EMPTY_VALUE } from '@/lib/format'
 import { flagList } from '@/lib/flags'
+import { FILTER_WIDTH } from '@/lib/ui'
 import SeverityBadge from '@/components/SeverityBadge'
 import SlideOutPanel from '@/components/SlideOutPanel'
 import RiskQualityPanel from '@/components/RiskQualityPanel'
@@ -70,13 +71,12 @@ const STATUS_FILTER_LABELS: Record<StatusFilterOption, string> = { all: 'All', .
 
 const ATTENTION_OPTIONS = ['High', 'Medium', 'None']
 
-// One width for every filter control (2026-09-09) -- wide enough for the longest
-// closed-state label across all of them (a full broker name, "Descending ↓", a
-// MultiSelectDropdown's "Label (N)" state) without looking oversized on the short
-// ones. Flag type's OPEN overlay is the one deliberate exception (see
-// MultiSelectDropdown's overlayClassName) -- its options are long enough that
-// matching this width would wrap badly.
-const FILTER_WIDTH = 'w-44'
+// FILTER_WIDTH moved to lib/ui.ts (2026-09-15) -- UnderwriterWorkspace's Status/
+// Assigned to selects now share this token too, so it has exactly one definition
+// rather than two copies that drift apart later. Flag type's OPEN overlay is still
+// the one deliberate exception to this width (see MultiSelectDropdown's
+// overlayClassName below) -- its options are long enough that matching this width
+// would wrap badly.
 
 function formatDate(renewalDate: string | null) {
   if (!renewalDate) return EMPTY_VALUE

@@ -24,9 +24,12 @@ export type FlagEvidence = {
   dnbListedExchange: string | null
 }
 
-// Shared inline flag breakdown, used by RiskQualityPanel's Risk Assessment view and by
-// Renewal Management's RPUX Auto-Renew expand-row detail (§5.3, §5.6) — same fields,
-// same layout.
+// Shared inline flag breakdown, used by RiskQualityPanel's Underwriter Renewal
+// Workbench view and by Renewal Management's RPUX Auto-Renew expand-row detail
+// (§5.3, §5.6) — same fields, same layout. stage1Heading/stage2Heading render as h2s
+// (2026-09-15, were h3s), matching Identity & Context/Renewal Financials/Loss Ratio's
+// heading scale in RiskQualityPanel, since each of these two boxes is a section header
+// in its own right rather than needing a shared label above both (SPEC.md S5.4).
 export default function FlagDetailPanel({
   item,
   stage1Heading = 'Operational Review Flags',
@@ -47,7 +50,7 @@ export default function FlagDetailPanel({
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <div className="flex flex-col">
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">{stage1Heading}</h3>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">{stage1Heading}</h2>
         <div className="flex-1 rounded-md border border-slate-200 bg-white p-4">
           <FlagRow label="Open Claim" fired={item.openClaim} severity="critical" />
           <FlagRow label="Premium Unpaid" fired={item.premiumUnpaid} severity="critical" />
@@ -57,7 +60,7 @@ export default function FlagDetailPanel({
         </div>
       </div>
       <div className="flex flex-col">
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">{stage2Heading}</h3>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">{stage2Heading}</h2>
         <div className="flex-1 rounded-md border border-slate-200 bg-white p-4">
           <FlagRow label="D&B No Match" fired={item.dnbNoMatch} severity="warning" />
           <FlagRow

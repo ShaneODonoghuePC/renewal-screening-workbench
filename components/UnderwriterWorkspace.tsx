@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MANUAL_REVIEW_TRANSITIONS, NAVINS_RENEW_TRANSITIONS } from '@/lib/statusWorkflow'
 import { EMPTY_VALUE } from '@/lib/format'
+import { FILTER_WIDTH } from '@/lib/ui'
 
 type StatusState = { policyId: string; status: string; assignedUserId: string | null }
 type Comment = { id: string; policyId: string; userId: string; text: string; createdAt: string }
@@ -200,13 +201,16 @@ export default function UnderwriterWorkspace({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-6">
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+        {/* FILTER_WIDTH (lib/ui.ts, 2026-09-15) -- same width as Renewal Management's
+            filter controls, one shared definition rather than a second w-44 written
+            down here to drift from the original later. */}
+        <label className={`flex flex-col gap-1 text-xs font-medium text-slate-600 ${FILTER_WIDTH}`}>
           Status
           <select
             value={statusState.status}
             onChange={(event) => changeStatus(event.target.value)}
             disabled={readOnly || saving}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
           >
             {statusOptions.map((option) => (
               <option key={option} value={option}>{option}</option>
@@ -214,13 +218,13 @@ export default function UnderwriterWorkspace({
           </select>
         </label>
 
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+        <label className={`flex flex-col gap-1 text-xs font-medium text-slate-600 ${FILTER_WIDTH}`}>
           Assigned to
           <select
             value={statusState.assignedUserId ?? ''}
             onChange={(event) => changeAssignment(event.target.value || null)}
             disabled={readOnly || saving}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-60"
           >
             <option value="">Unassigned</option>
             {users.map((user) => (

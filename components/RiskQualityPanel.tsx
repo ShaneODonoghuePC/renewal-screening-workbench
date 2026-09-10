@@ -118,14 +118,15 @@ function GradeCard({
         </div>
       </div>
 
-      {/* 2026-09-10: matched to FlagDetailPanel's section headings (text-sm
-          font-semibold text-slate-900, components/FlagDetailPanel.tsx) so these read
-          as peers of "Operational Review Flags"/"Company & Financial Flags" rather
-          than small grey captions. Left as a <p>, not promoted to a heading element --
-          the three-card block deliberately has no section header/headline above it
-          (2026-09-09), so there's no h2 for an h3 here to nest under without reading
-          oddly against the real section h2s elsewhere on the panel (Loss Ratio,
-          Identity & Context). */}
+      {/* text-sm font-semibold text-slate-900 -- set 2026-09-10 to match
+          FlagDetailPanel's section headings, which were text-sm/h3 at the time,
+          "so these read as peers." That's no longer true: FlagDetailPanel's headings
+          became h2/text-lg on 2026-09-15 (matching Identity & Context/Renewal
+          Financials/Loss Ratio), and this label was NOT changed to follow -- left at
+          text-sm, a deliberate scope decision for that round, not an oversight, and
+          now its own small heading-scale mismatch (flagged, not fixed here). Still a
+          <p>, not a heading element -- the three-card block has no section
+          header/headline above it, so there's no h2 for an h3 here to nest under. */}
       <p className="text-sm font-semibold text-slate-900">{label}</p>
       <div className="mt-2 flex justify-center">
         {grade ? (
@@ -181,25 +182,24 @@ function pct(ratio: number) {
   return `${Math.round(ratio * 100)}%`
 }
 
-// Risk Evaluation panel (display name; the component/type identifiers this file and
-// lib/mockRiskQuality.ts use -- RiskQualityPanel, renewalEconomics -- are deliberately
-// left as they are, 2026-09-09: renaming them would touch the shape the panel
-// consumes, out of scope for a display-only rename. See SPEC.md S5.4 for this same
-// divergence noted the way renewalEconomics/Renewal Financials already was.
+// "Underwriter Renewal Workbench" panel (display name, 2026-09-15, was "Risk
+// Evaluation"; the component/type identifiers this file and lib/mockRiskQuality.ts use
+// -- RiskQualityPanel, renewalEconomics -- are deliberately left as they are: renaming
+// them would touch the shape the panel consumes, out of scope for a display-only
+// rename. See SPEC.md S5.4 for this same divergence noted the way renewalEconomics/
+// Renewal Financials already was.
 //
-// Section order, top to bottom (2026-09-14, supersedes the previous order): title
-// only (no pills) -> the three graded dimension cards (no header/headline), ending in
-// "Flags Raised" -- an inline "header: list" summary at the bottom of that same
-// three-card box, preceded by "Attention Flags" (only when at least one attention-only
-// flag is present, SPEC.md S3.2) -- both left-aligned, not itemized rows -> Identity &
-// Context / Renewal Financials (two columns, each boxed) -> Loss Ratio -> "Flags" (new
-// 2026-09-14, styled identically to the three headers before it), containing the two
-// itemized Y/N tables, Operational Review Flags / Company & Financial Flags. "Flags"
-// and "Flags Raised" are deliberately two different names for two different jobs (the
-// section vs. a summary of what fired) -- see the comment at the Flags section itself.
-// Historical Performance (the old section, and its Policy Metrics block) is gone
-// entirely -- Policy Tenure, the one thing in it that wasn't superseded by the Loss
-// Ratio section, moved into Identity & Context.
+// Section order, top to bottom: title only (no pills) -> the three graded dimension
+// cards (no header/headline), ending in "Flags Raised" -- an inline "header: list"
+// summary at the bottom of that same three-card box, preceded by "Attention Flags"
+// (only when at least one attention-only flag is present, SPEC.md S3.2) -- both
+// left-aligned, not itemized rows -> Identity & Context / Renewal Financials (two
+// columns, each boxed) -> Loss Ratio -> the two itemized Y/N flag tables (Operational
+// Review Flags / Company & Financial Flags, each its own section header -- see
+// FlagDetailPanel.tsx). "Flags Raised" is the only place that phrase appears anywhere
+// in the panel. Historical Performance (the old section, and its Policy Metrics block)
+// is gone entirely -- Policy Tenure, the one thing in it that wasn't superseded by the
+// Loss Ratio section, moved into Identity & Context.
 //
 // Read-only -- status/assignment/comments/activity live in the separate Underwriter
 // Workspace (components/UnderwriterWorkspace.tsx), reached via the table's expand row.
@@ -287,8 +287,14 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
             below it is indented), since right padding on a left-aligned heading is
             invisible in the standalone /review/manual/[id] page, which doesn't use
             SlideOutPanel at all. No prop for this -- the component stays host-agnostic
-            rather than one host reaching in to configure it. */}
-        <h1 className="pr-28 text-2xl font-bold text-slate-900">Risk Evaluation</h1>
+            rather than one host reaching in to configure it.
+            "Underwriter Renewal Workbench" (2026-09-15, was "Risk Evaluation") -- a
+            longer string than the old title, re-checked against the same pr-28
+            clearance at a narrow (~700px) viewport by measuring the rendered text's
+            own bounding rect (a Range over the text node), not the h1 element's block
+            box, which spans the full container width regardless of text length and
+            would report a false overlap against the floating Close button. */}
+        <h1 className="pr-28 text-2xl font-bold text-slate-900">Underwriter Renewal Workbench</h1>
       </div>
 
       {/* The three graded dimension cards -- no section header, no headline, promoted
@@ -356,10 +362,10 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
           treatment (2026-09-11, components/FlagDetailPanel.tsx) -- flex-1 on the inner
           box is what makes the shorter column (Renewal Financials, 3 rows) stretch to
           match the taller one (Identity & Context, 6 rows) rather than trailing off
-          with blank space beside it. The h2 headings stay above the boxes, unchanged
-          size (text-lg) -- FlagDetailPanel's own headings are h3/text-sm, a genuine
-          size difference between the two box styles left as-is pending a call from
-          Shane on whether it should be reconciled. */}
+          with blank space beside it. The h2 headings above these two boxes and
+          FlagDetailPanel's own headings are now the same scale (h2, text-lg,
+          2026-09-15) -- the size mismatch this comment used to flag here is resolved,
+          not left open; see SPEC.md S5.4. */}
       <div className="grid gap-8 border-b border-slate-200 pb-6 md:grid-cols-2">
         <section className="flex flex-col">
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Identity &amp; Context</h2>
@@ -409,18 +415,15 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         <LossRatioTable oneYear={oneYear} twoYear={twoYear} threeYear={threeYear} allYears={allYears} currency={policy.currency} />
       </section>
 
-      {/* The itemized Y/N flag breakdown, under its own "Flags" section header
-          (2026-09-14, reversing the 2026-09-11 removal of a header here -- but with a
-          DIFFERENT name, styled identically to Identity & Context/Renewal
-          Financials/Loss Ratio above). "Flags" names this section; "Flags Raised" (in
-          the three-card section above) summarises what actually fired for this
-          policy -- two different jobs, so having both doesn't reintroduce the
-          same-name-at-two-levels problem the 2026-09-11 removal was fixing. "Flags
-          Raised" itself stays exactly where it is and is still the only place that
-          phrase appears anywhere in the panel. The two tables below keep their own h3
-          headings (Operational Review Flags / Company & Financial Flags), unchanged. */}
+      {/* The itemized Y/N flag breakdown. No wrapping section header here -- the two
+          tables (FlagDetailPanel.tsx) carry their own h2 section headings
+          ("Operational Review Flags" / "Company & Financial Flags"), styled the same
+          as Identity & Context/Renewal Financials/Loss Ratio above, so each reads as a
+          section header in its own right rather than needing a shared label above
+          both. "Flags Raised" is a different thing entirely -- the inline fired-flag
+          summary at the bottom of the three-card section above -- and is the only
+          place that phrase appears anywhere in the panel. */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Flags</h2>
         <FlagDetailPanel item={policy} stage1Heading="Operational Review Flags" stage2Heading="Company & Financial Flags" />
       </section>
       </div>
