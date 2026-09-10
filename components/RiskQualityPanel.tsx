@@ -187,17 +187,19 @@ function pct(ratio: number) {
 // consumes, out of scope for a display-only rename. See SPEC.md S5.4 for this same
 // divergence noted the way renewalEconomics/Renewal Financials already was.
 //
-// Section order, top to bottom (2026-09-10, supersedes the previous order): title
-// only (no pills) -> the three graded dimension cards (no header/headline) ->
-// Identity & Context / Renewal Financials (two columns) -> Loss Ratio -> Flags Raised
-// -- now the shared section header for the rest of the panel (2026-09-10, was its own
-// standalone "Flags Raised: <flagReasons>" summary line below the tables), containing,
-// in order: the "Attention Flags" sub-header + inline list (only when at least one
-// attention-only flag is present, SPEC.md S3.2 -- these never get a Y/N row below),
-// then Operational Review Flags / Company & Financial Flags. Historical Performance
-// (the old section, and its Policy Metrics block) is gone entirely -- Policy Tenure,
-// the one thing in it that wasn't superseded by the Loss Ratio section, moved into
-// Identity & Context.
+// Section order, top to bottom (2026-09-14, supersedes the previous order): title
+// only (no pills) -> the three graded dimension cards (no header/headline), ending in
+// "Flags Raised" -- an inline "header: list" summary at the bottom of that same
+// three-card box, preceded by "Attention Flags" (only when at least one attention-only
+// flag is present, SPEC.md S3.2) -- both left-aligned, not itemized rows -> Identity &
+// Context / Renewal Financials (two columns, each boxed) -> Loss Ratio -> "Flags" (new
+// 2026-09-14, styled identically to the three headers before it), containing the two
+// itemized Y/N tables, Operational Review Flags / Company & Financial Flags. "Flags"
+// and "Flags Raised" are deliberately two different names for two different jobs (the
+// section vs. a summary of what fired) -- see the comment at the Flags section itself.
+// Historical Performance (the old section, and its Policy Metrics block) is gone
+// entirely -- Policy Tenure, the one thing in it that wasn't superseded by the Loss
+// Ratio section, moved into Identity & Context.
 //
 // Read-only -- status/assignment/comments/activity live in the separate Underwriter
 // Workspace (components/UnderwriterWorkspace.tsx), reached via the table's expand row.
@@ -407,11 +409,18 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         <LossRatioTable oneYear={oneYear} twoYear={twoYear} threeYear={threeYear} allYears={allYears} currency={policy.currency} />
       </section>
 
-      {/* The itemized Y/N flag breakdown -- no "Flags Raised" header above it any more
-          (2026-09-11: that name now lives exactly once, in the three-card section
-          above). The two tables keep their own h3 headings (Operational Review Flags /
-          Company & Financial Flags), which is label enough on its own. */}
+      {/* The itemized Y/N flag breakdown, under its own "Flags" section header
+          (2026-09-14, reversing the 2026-09-11 removal of a header here -- but with a
+          DIFFERENT name, styled identically to Identity & Context/Renewal
+          Financials/Loss Ratio above). "Flags" names this section; "Flags Raised" (in
+          the three-card section above) summarises what actually fired for this
+          policy -- two different jobs, so having both doesn't reintroduce the
+          same-name-at-two-levels problem the 2026-09-11 removal was fixing. "Flags
+          Raised" itself stays exactly where it is and is still the only place that
+          phrase appears anywhere in the panel. The two tables below keep their own h3
+          headings (Operational Review Flags / Company & Financial Flags), unchanged. */}
       <section>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Flags</h2>
         <FlagDetailPanel item={policy} stage1Heading="Operational Review Flags" stage2Heading="Company & Financial Flags" />
       </section>
       </div>
