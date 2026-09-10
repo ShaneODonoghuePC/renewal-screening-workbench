@@ -28,13 +28,16 @@ export default function SlideOutPanel({
             z-20: above the panel's own content (no explicit z-index of its own) but
             below the grade-card tooltip popovers (z-30, RiskQualityPanel.tsx's
             GradeCard) -- an open tooltip must never be occluded by this button.
-            The content below gets extra top padding (pt-16, see the div below) so the
-            three grade cards -- specifically the Historical Performance card in the
-            rightmost grid column, whose own "?" tooltip trigger sits top-right of
-            its own card -- never occupy the same vertical band as this button at all.
-            That's a real layout fix, not a z-index-only workaround: verified by
-            scrolling to the top of a real panel and both clicking and Tab-ing to each
-            control, in the running app, not just reading the JSX. */}
+            2026-09-13: the content's extra top padding (was pt-16) is gone -- content
+            now rises into the button's horizontal band, so clearance comes from the
+            content's own right edge instead (RiskQualityPanel.tsx's "Risk Evaluation"
+            h1 carries pr-28, unconditionally, so the button never sits over the title).
+            The three grade cards below the title now sit ~40px higher than before;
+            verified via getBoundingClientRect in the running app that the Historical
+            Performance card's own "?" tooltip trigger (top-right of its own card,
+            rightmost column) still clears this button's bottom edge -- see SPEC.md
+            S5.4/S8.6 for the measured gap. Not a z-index-only workaround: both
+            controls confirmed independently clickable and keyboard-reachable. */}
         <button
           type="button"
           onClick={onClose}
@@ -42,7 +45,7 @@ export default function SlideOutPanel({
         >
           Close ✕
         </button>
-        <div className="flex-1 overflow-y-auto p-6 pt-16">{children}</div>
+        <div className="flex-1 overflow-y-auto p-6">{children}</div>
       </div>
     </div>
   )

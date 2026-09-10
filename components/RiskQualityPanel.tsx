@@ -279,7 +279,14 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
           tooltip (see GradeCard/unverifiedCompanyFinancialDetails), where it belongs
           next to the grade it actually affects. */}
       <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-bold text-slate-900">Risk Evaluation</h1>
+        {/* pr-28 (2026-09-13): clearance for the slide-out's floating Close button
+            (SlideOutPanel.tsx), which sits at right-4 and is ~80px wide -- applied
+            unconditionally, on the title itself rather than a wrapper (so nothing
+            below it is indented), since right padding on a left-aligned heading is
+            invisible in the standalone /review/manual/[id] page, which doesn't use
+            SlideOutPanel at all. No prop for this -- the component stays host-agnostic
+            rather than one host reaching in to configure it. */}
+        <h1 className="pr-28 text-2xl font-bold text-slate-900">Risk Evaluation</h1>
       </div>
 
       {/* The three graded dimension cards -- no section header, no headline, promoted
