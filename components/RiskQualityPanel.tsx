@@ -55,6 +55,13 @@ function riskQualitySectionClasses(grade: Grade) {
 // all) styled to read as obviously interactive, which the old plain-circle-with-title
 // treatment didn't. The one place still explaining "why this grade" is this popover;
 // there's no separate reason line under the circle any more.
+//
+// 2026-09-10: popover shrunk ~25% (w-64 p-3 -> w-48 p-2) -- the trigger icon itself
+// (h-6 w-6, and its "?" glyph) is UNCHANGED, since that affordance was deliberately
+// strengthened in the prior round and shrinking it would undo that; only the popover
+// shrank. `scaleInfo` is a string[] now (one line per band, plain stacked lines, not
+// bulleted -- the A/B/C prefix on each line already does what a bullet would) instead
+// of a single sentence, same reasoning as `details` already being a list.
 function GradeCard({
   label,
   scaleInfo,
@@ -62,7 +69,7 @@ function GradeCard({
   details,
 }: {
   label: string
-  scaleInfo: string
+  scaleInfo: string[]
   grade: Grade | null
   details: string[]
 }) {
@@ -74,13 +81,17 @@ function GradeCard({
           className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-white shadow-sm transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           aria-label={`What ${label} grades mean, and why this one`}
         >
-          i
+          ?
         </button>
         <div
           role="tooltip"
-          className="invisible absolute right-0 top-full z-30 mt-2 w-64 -translate-y-1 rounded-lg border border-slate-200 bg-white p-3 text-left text-xs text-slate-700 opacity-0 shadow-lg transition duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
+          className="invisible absolute right-0 top-full z-30 mt-2 w-48 -translate-y-1 rounded-lg border border-slate-200 bg-white p-2 text-left text-xs text-slate-700 opacity-0 shadow-lg transition duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
         >
-          <p className="mb-1.5 font-semibold text-slate-900">{scaleInfo}</p>
+          <div className="mb-1.5 space-y-0.5 font-semibold text-slate-900">
+            {scaleInfo.map((line, i) => (
+              <p key={i}>{line}</p>
+            ))}
+          </div>
           <ul className="list-disc space-y-0.5 pl-4">
             {details.map((detail, i) => (
               <li key={i}>{detail}</li>
@@ -147,13 +158,15 @@ function pct(ratio: number) {
 // consumes, out of scope for a display-only rename. See SPEC.md S5.4 for this same
 // divergence noted the way renewalEconomics/Renewal Financials already was.
 //
-// Section order, top to bottom (2026-09-09 redesign, supersedes the previous order):
-// title only (no pills) -> the three graded dimension cards (no header/headline) ->
-// Identity & Context / Renewal Financials (two columns) -> Loss Ratio -> Flags Raised
-// (inline) -> Operational Review Flags / Company & Financial Flags. Historical
-// Performance (the old section, and its Policy Metrics block) is gone entirely --
-// Policy Tenure, the one thing in it that wasn't superseded by the Loss Ratio section,
-// moved into Identity & Context.
+// Section order, top to bottom (2026-09-10, supersedes the previous order): title
+// only (no pills) -> the three graded dimension cards (no header/headline) ->
+// Identity & Context / Renewal Financials (two columns) -> Loss Ratio -> Operational
+// Review Flags / Company & Financial Flags -> Flags Raised (inline), now a closing
+// summary line under the itemized breakdown rather than a preview above it (moved
+// 2026-09-10, was directly above the flag sections). Historical Performance (the old
+// section, and its Policy Metrics block) is gone entirely -- Policy Tenure, the one
+// thing in it that wasn't superseded by the Loss Ratio section, moved into Identity &
+// Context.
 //
 // Read-only -- status/assignment/comments/activity live in the separate Underwriter
 // Workspace (components/UnderwriterWorkspace.tsx), reached via the table's expand row.
@@ -237,13 +250,21 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         <div className="grid gap-3 sm:grid-cols-3">
           <GradeCard
             label="Operational"
-            scaleInfo="A = no Stage 1 flags fired. B = exactly one non-critical flag. C = Open Claim, Premium Unpaid, or 2+ flags fired."
+            scaleInfo={[
+              'A = no Operational Review Flags fired.',
+              'B = exactly one non-critical flag.',
+              'C = Open Claim, Premium Unpaid, or 2+ flags fired.',
+            ]}
             grade={riskQuality.operational.grade}
             details={riskQuality.operational.details}
           />
           <GradeCard
             label="Company & Financial"
-            scaleInfo="A = no Stage 2 flags fired. B = exactly one flag. C = two or more of D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company."
+            scaleInfo={[
+              'A = no Company & Financial Flags fired.',
+              'B = exactly one flag.',
+              'C = two or more of D&B Rating Below A, Latest Profit Negative, Assets Moved >25% YoY, or D&B Listed Company.',
+            ]}
             grade={riskQuality.companyFinancial?.grade ?? null}
             details={riskQuality.companyFinancial?.details ?? unverifiedCompanyFinancialDetails(policy)}
           />
@@ -302,19 +323,20 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
         <LossRatioTable oneYear={oneYear} twoYear={twoYear} threeYear={threeYear} allYears={allYears} currency={policy.currency} />
       </section>
 
-      {/* Flags Raised -- renamed from "Flag Reasons" (2026-09-09), and rendered
-          inline with its own header rather than stacked dt/dd below it. */}
+      {/* Detailed flag breakdown -- unchanged in substance. */}
+      <section>
+        <FlagDetailPanel item={policy} stage1Heading="Operational Review Flags" stage2Heading="Company & Financial Flags" />
+      </section>
+
+      {/* Flags Raised -- renamed from "Flag Reasons" (2026-09-09), rendered inline
+          with its own header rather than stacked dt/dd below it. Moved below both
+          flag sections (2026-09-10, was directly above them) -- now reads as a
+          closing summary of the itemized breakdown above it, not a preview of it. */}
       <section>
         <p className="text-sm">
           <span className="font-semibold text-slate-900">Flags Raised: </span>
           <span className="text-slate-700">{policy.flagReasons || EMPTY_VALUE}</span>
         </p>
-      </section>
-
-      {/* Detailed flag breakdown -- unchanged in substance, just sitting lower in the
-          panel now that Flags Raised/Loss Ratio moved above it. */}
-      <section>
-        <FlagDetailPanel item={policy} stage1Heading="Operational Review Flags" stage2Heading="Company & Financial Flags" />
       </section>
     </div>
   )

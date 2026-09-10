@@ -183,10 +183,17 @@ export function computeHistoricalGrade(lossRatio: number): Grade {
 }
 
 // The Historical card's tooltip description, generated from the same bands the grade
-// computation uses -- never a separately-typed string that could drift from them.
-export function historicalGradeScaleInfo(): string {
+// computation uses -- never a separately-typed set of strings that could drift from
+// them. One line per band (2026-09-10, was a single sentence), matching the other two
+// cards' scaleInfo shape -- HISTORICAL_GRADE_BANDS stays the one place the numbers
+// themselves are written down; only the rendering here changed.
+export function historicalGradeScaleInfo(): string[] {
   const { aMaxPercent, bMaxPercent } = HISTORICAL_GRADE_BANDS
-  return `A = under ${aMaxPercent}% loss ratio (All Years). B = ${aMaxPercent}-${bMaxPercent}%. C = over ${bMaxPercent}%.`
+  return [
+    `A = under ${aMaxPercent}% loss ratio (All Years).`,
+    `B = ${aMaxPercent}-${bMaxPercent}%.`,
+    `C = over ${bMaxPercent}%.`,
+  ]
 }
 
 // One-line tooltip detail for the Historical grade, tied to the All Years window --

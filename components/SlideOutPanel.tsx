@@ -16,7 +16,12 @@ export default function SlideOutPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} aria-hidden="true" />
-      <div className="relative flex h-screen w-full max-w-3xl flex-col bg-white shadow-2xl">
+      {/* max-w-4xl (was max-w-3xl, 2026-09-10) -- the Loss Ratio table's four cumulative
+          columns needed ~741px and only had ~718px at the old width, forcing a
+          horizontal scrollbar at normal desktop widths. 896px content width leaves
+          headroom above that. The table's own overflow-x-auto wrapper stays in place
+          as a fallback for genuinely narrow viewports -- see RiskQualityPanel.tsx. */}
+      <div className="relative flex h-screen w-full max-w-4xl flex-col bg-white shadow-2xl">
         <div className={`flex items-center gap-2 border-b border-slate-200 p-3 ${title ? 'justify-between' : 'justify-end'}`}>
           {title && <h2 className="pl-2 text-xl font-semibold tracking-tight text-slate-900">{title}</h2>}
           <button

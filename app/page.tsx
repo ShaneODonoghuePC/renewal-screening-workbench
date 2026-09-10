@@ -353,14 +353,19 @@ export default function TeamViewPage() {
     })
   }, [items, selectedMonth])
 
-  // Reduced to three tiles (2026-09-09): Total Renewals, Medium Attention, High
+  // Reduced to three tiles (2026-09-09): Open Renewals, Medium Attention, High
   // Attention -- Auto-renew/Navins Renew/Manual Review/Total flags raised/Closed all
-  // dropped. Medium/High are scoped to the exact same month-scoped, non-terminal
-  // population Total Renewals sums (manual + navins open items + all auto-renew),
-  // not the full month-scoped set including closed items -- "scoped exactly as Total
-  // Renewals is scoped" read literally, same row set, not just the same month. The
-  // attention check itself ((item.attention || 'None') === X) is the identical
-  // expression the Attention filter above uses -- one definition, not a second one.
+  // dropped. "Open Renewals" (renamed from "Total Renewals" 2026-09-10 -- a
+  // correction, not just a rename: `totalRenewals` below has always excluded closed
+  // items via isTerminalStatus, so "Total" overstated what it counted) is manual +
+  // navins open items + all auto-renew. Medium/High are scoped to that exact same
+  // population, not the full month-scoped set including closed items -- "scoped
+  // exactly as Open Renewals is scoped" read literally, same row set, not just the
+  // same month. The attention check itself ((item.attention || 'None') === X) is the
+  // identical expression the Attention filter above uses -- one definition, not a
+  // second one. The `totalRenewals` field name itself is unchanged -- display label
+  // and code identifier deliberately diverge here, same convention as
+  // renewalEconomics/Renewal Financials (SPEC.md).
   const summary = useMemo(() => {
     const manual = summaryMonthItems.filter((item) => item.routing === 'Manual Review' && !isTerminalStatus(item.routing, item.status))
     const navins = summaryMonthItems.filter((item) => item.routing === 'NAVINS Renew' && !isTerminalStatus(item.routing, item.status))
@@ -467,7 +472,10 @@ export default function TeamViewPage() {
           Wrapped in its own tight space-y-2 alongside the filter section below, so
           the gap to the filters closes too, rather than just the gap within this row. */}
       <div className="space-y-2">
-        <section className="flex flex-wrap items-center justify-between gap-4">
+        {/* Left-aligned (2026-09-10, was justify-between -- that pushed the stats to
+            the far right edge, away from the picker they're scoped by; they now sit
+            immediately after it, reading as one group). */}
+        <section className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
             Month
             <select
@@ -482,10 +490,11 @@ export default function TeamViewPage() {
           </label>
 
           {/* Summary strip: month-scoped overview, independent of the filters below --
-              reduced to three tiles (2026-09-09): Total Renewals, Medium Attention,
-              High Attention. */}
+              three tiles: Open Renewals (renamed from "Total Renewals" 2026-09-10 --
+              a correction, not just a rename: this count has always excluded closed
+              items, so "Total" was never accurate), Medium Attention, High Attention. */}
           <div className="flex flex-wrap gap-x-8 gap-y-1">
-            <StatTile label="Total Renewals" value={summary.totalRenewals} />
+            <StatTile label="Open Renewals" value={summary.totalRenewals} />
             <StatTile label="Medium Attention" value={summary.mediumAttentionCount} />
             <StatTile label="High Attention" value={summary.highAttentionCount} />
           </div>

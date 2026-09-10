@@ -26,18 +26,26 @@ export type FlagEvidence = {
 // same layout.
 export default function FlagDetailPanel({
   item,
-  stage1Heading = 'Stage 1 flags',
-  stage2Heading = 'Stage 2 flags',
+  stage1Heading = 'Operational Review Flags',
+  stage2Heading = 'Company & Financial Flags',
 }: {
   item: FlagEvidence
   stage1Heading?: string
   stage2Heading?: string
 }) {
+  // Already side by side at md+ (grid-cols-2) -- Operational has 5 rows, Company &
+  // Financial has 6, so their content naturally differs in height. Grid's default
+  // align-items:stretch already stretches each OUTER grid item (the flex-col wrapper
+  // below) to match the taller row, but that alone doesn't make the bordered box
+  // inside fill it -- flex-1 on the box is what actually consumes that stretched
+  // height (2026-09-10), so the two boxes read as visually equal rather than the
+  // shorter one trailing off with blank space beside a taller neighbour. Deliberately
+  // not a hardcoded height: this scales with whichever side has more rows in future.
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <div>
+      <div className="flex flex-col">
         <h3 className="mb-2 text-sm font-semibold text-slate-900">{stage1Heading}</h3>
-        <div className="rounded-md border border-slate-200 bg-white p-4">
+        <div className="flex-1 rounded-md border border-slate-200 bg-white p-4">
           <FlagRow label="Open Claim" fired={item.openClaim} severity="critical" />
           <FlagRow label="Premium Unpaid" fired={item.premiumUnpaid} severity="critical" />
           <FlagRow label="Renewal Type Manual" fired={item.renewalTypeManual} severity="warning" />
@@ -45,9 +53,9 @@ export default function FlagDetailPanel({
           <FlagRow label="Is Frame" fired={item.isFrame} />
         </div>
       </div>
-      <div>
+      <div className="flex flex-col">
         <h3 className="mb-2 text-sm font-semibold text-slate-900">{stage2Heading}</h3>
-        <div className="rounded-md border border-slate-200 bg-white p-4">
+        <div className="flex-1 rounded-md border border-slate-200 bg-white p-4">
           <FlagRow label="D&B No Match" fired={item.dnbNoMatch} severity="warning" />
           <FlagRow label="D&B Status Inactive" fired={item.dnbStatusInactive} figure={item.dnbOperatingStatusLabel} severity="warning" />
           <FlagRow label="D&B Rating Below A" fired={item.dnbRatingBelowA} figure={item.dnbRating} severity="warning" />
