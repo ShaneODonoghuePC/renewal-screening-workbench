@@ -150,21 +150,43 @@ function companyFinancialUnverifiedDetails(policy: RiskQualityInput): string[] {
   return ['Not graded: D&B shows this company as inactive.']
 }
 
+// Historical grade bands -- the ONE place these numbers are written down (2026-09-10).
+// Every consumer (the grade computation below, the Historical card's tooltip text in
+// RiskQualityPanel.tsx) reads this, rather than restating the numbers -- there was a
+// real bug in this app's history where a loss-ratio cell used its own 25%/50% cutoffs
+// while the grade beside it used 55/75, so the same policy could show a "green" cell
+// and a C grade at the same time. Don't add a second definition anywhere; import this one.
+//
+// PROTOTYPE THRESHOLDS, chosen for this demo dataset -- NOT a production recommendation.
+// Set 2026-09-10 against a right-skewed ~26%-of-policies-claim / ~20%-mean-among-claimants
+// distribution (see buildLossRatioHistory below); the original 55/75 bands were set when
+// the synthesis averaged ~60% and are unreachable once the book averages ~20%. Where the
+// real production thresholds should land is a separate, open question -- the real build
+// must not inherit these by default just because they're what the demo shipped with.
+export const HISTORICAL_GRADE_BANDS = {
+  // A: below this. B: from this up to (and including) bMaxPercent. C: above bMaxPercent.
+  aMaxPercent: 35,
+  bMaxPercent: 55,
+} as const
+
 // Historical grade, thresholded off a loss ratio -- the same way
 // computeOperationalGrade/computeCompanyFinancialGrade threshold off real flag counts.
 // Fed the All Years cumulative window's loss ratio (LossRatioHistory.allYears.lossRatio),
 // the widest available window, not a single year's figure.
-// Thresholds are an assumption (mid-50s to low-60s loss ratio is a normal/healthy range
-// for commercial P&C), matched to the shipped distribution (mean ~55%, SD ~17pt) so the
-// split lands roughly where A/B/C should for this dataset -- easy to retune later.
 export function computeHistoricalGrade(lossRatio: number): Grade {
   // Threshold on the rounded percentage rather than the raw fraction, so the grade band
-  // can never disagree with the displayed Loss Ratio % right at a boundary (e.g. a raw
-  // 54.96% displaying as "55%" while still grading as if it were under the B cutoff).
+  // can never disagree with the displayed Loss Ratio % right at a boundary.
   const pct = Math.round(lossRatio * 100)
-  if (pct > 75) return 'C'
-  if (pct >= 55) return 'B'
+  if (pct > HISTORICAL_GRADE_BANDS.bMaxPercent) return 'C'
+  if (pct >= HISTORICAL_GRADE_BANDS.aMaxPercent) return 'B'
   return 'A'
+}
+
+// The Historical card's tooltip description, generated from the same bands the grade
+// computation uses -- never a separately-typed string that could drift from them.
+export function historicalGradeScaleInfo(): string {
+  const { aMaxPercent, bMaxPercent } = HISTORICAL_GRADE_BANDS
+  return `A = under ${aMaxPercent}% loss ratio (All Years). B = ${aMaxPercent}-${bMaxPercent}%. C = over ${bMaxPercent}%.`
 }
 
 // One-line tooltip detail for the Historical grade, tied to the All Years window --
@@ -204,10 +226,6 @@ function randNormal(rand: () => number, mean: number, sd: number): number {
   return mean + z * sd
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
-}
-
 const LOSS_RATIO_HISTORY_YEARS = 5
 
 // The current, in-progress policy year -- the calendar year the renewal date itself
@@ -221,50 +239,98 @@ function currentPolicyYear(renewalDate: string | null): number {
   return date.getUTCFullYear()
 }
 
-// Builds 5 years of loss-ratio history (oldest -> newest), pinning the newest year's
-// premiumWritten/claimsIncurred to the same seeded figures the panel has always used
-// for "this cycle" (see getRiskQuality below) so nothing already-visible silently
-// changes value -- only pro-rated for premiumEarned, per the current-year rule.
-// The four prior years are synthesized backward from there: a plausible YoY premium
-// trend for premiumWritten, and a bell-curve walk for the loss ratio (same shape the
-// old 3-year version used, just carried one step further back each time), with each
-// year's claimsIncurred then derived from that year's own premiumWritten and ratio --
-// so every year's own figures are internally consistent by construction.
-function buildLossRatioHistory(
-  rand: () => number,
-  renewalDate: string | null,
-  currentPremiumWritten: number,
-  currentClaimsIncurred: number
-): LossRatioHistory {
+// Policy-level claim distribution (2026-09-10, confirmed with the client): ~26% of
+// POLICIES carry any claims at all -- drawn once per policy, not once per year, so a
+// clean policy is clean across every year (zero claims incurred, zero claims count,
+// 0% loss ratio everywhere) rather than almost every policy being "claiming somewhere"
+// across five years. Among claiming policies, a claim doesn't hit every year either --
+// each year independently has a chance of being one of the years with a claim, so the
+// normal case is claims in some years and not others, not all five.
+//
+// CLAIMING_POLICY_RATE is the per-policy draw probability, not the measured outcome --
+// against this specific 403-row dataset (fixed ids, so not literally i.i.d.), 0.28
+// lands the actual measured share at ~25.8%, empirically checked via
+// scripts/_measure-lossratio.cjs rather than assumed equal to the input probability.
+const CLAIMING_POLICY_RATE = 0.28
+const CLAIMING_POLICY_YEAR_ACTIVE_RATE = 0.5
+
+// Log-normal draw for a claiming year's own claims-to-written-premium ratio -- mu/sigma
+// tuned empirically (scripts/_measure-lossratio.cjs) so that, once diluted by the ~50%
+// of years in a claiming policy with no claim and rolled up into the All Years
+// cumulative window, the resulting population of claiming policies averages close to
+// the ~20% target (measured: 20.9%) while still carrying a real right-hand tail (some
+// policies well past the Historical grade's B and C thresholds, HISTORICAL_GRADE_BANDS
+// above) -- not a tight distribution that would put every policy in the A band
+// regardless of whether it claims. No upper clamp: a log-normal tail can produce a
+// genuinely large ratio for an unlucky year, and clamping it back down would undo the
+// point of using a skewed distribution in the first place.
+function drawClaimYearRatio(rand: () => number): number {
+  const mu = -1.95
+  const sigma = 1.3
+  const z = randNormal(rand, 0, 1)
+  return Math.exp(mu + sigma * z)
+}
+
+// Builds 5 years of loss-ratio history (oldest -> newest). premiumWritten follows a
+// plausible YoY trend backward from the current year's own written premium (unrelated
+// to whether the policy claims at all). claimsIncurred/claimsCount are decided by the
+// policy-level claiming draw above -- an honest zero for a clean policy or a clean
+// policy's non-claiming years, never floored or clamped away from zero (2026-09-10;
+// this used to have a 0.1 floor on the ratio and a "1 +" floor on claimsCount, both of
+// which made a genuinely clean year impossible).
+//
+// The newest year is the current, in-progress policy year: premiumEarned is pro-rated
+// by months elapsed, and so, as of 2026-09-10, is claimsIncurred, on exactly the same
+// basis -- claims accrue over the year just as premium does, so pro-rating one and not
+// the other (the earlier bug) inflated that year's ratio by up to 12x. No flooring
+// monthsElapsed and no clamping the result; the range is left to fall where it falls.
+function buildLossRatioHistory(rand: () => number, renewalDate: string | null, currentPremiumWritten: number): LossRatioHistory {
   const newestYear = currentPolicyYear(renewalDate)
   // How far into the current policy year we are -- synthesized rather than read off
   // the real wall-clock date, so this stays a stable, per-policy-seeded figure like
   // everything else here (not something that would silently drift day to day).
   const monthsElapsed = 1 + Math.floor(rand() * 12)
 
-  // Built newest -> oldest (index 0 = current year), reversed to oldest -> newest below.
+  // Premium trend: built newest -> oldest (index 0 = current year), reversed below.
   const written = [currentPremiumWritten]
-  const claims = [currentClaimsIncurred]
   for (let i = 1; i < LOSS_RATIO_HISTORY_YEARS; i++) {
     const growth = Math.round((rand() * 30 - 10) * 10) / 10 // roughly -10%..+20% YoY
-    const priorWritten = Math.round(written[i - 1] / (1 + growth / 100))
-    written.push(priorWritten)
-
-    const priorRatio = clamp(claims[i - 1] / written[i - 1] - (rand() - 0.5) * 0.24, 0.1, 1.4)
-    claims.push(Math.round(priorRatio * priorWritten))
+    written.push(Math.round(written[i - 1] / (1 + growth / 100)))
   }
   written.reverse()
-  claims.reverse()
+
+  // Claims: one policy-level draw, then (for claiming policies only) one per-year
+  // activation draw, both BEFORE the ratio/count draws below -- so which years end up
+  // active doesn't depend on how many random calls a given year's magnitude ends up
+  // consuming, and the sequence stays the same length regardless of outcome.
+  const isClaimingPolicy = rand() < CLAIMING_POLICY_RATE
+  // `written` is already oldest -> newest at this point (reversed above), so index
+  // length-1 is the current year -- matters for the fallback below.
+  const yearActive = written.map(() => isClaimingPolicy && rand() < CLAIMING_POLICY_YEAR_ACTIVE_RATE)
+  if (isClaimingPolicy && !yearActive.some(Boolean)) {
+    // A "claiming policy" with zero active years by chance (all five draws missed) --
+    // force the current (newest) year active rather than silently having a claiming
+    // policy that never actually shows a claim anywhere.
+    yearActive[yearActive.length - 1] = true
+  }
+  const claimsRaw = written.map((premiumWritten, i) => {
+    if (!yearActive[i]) return { claimsIncurred: 0, claimsCount: 0 }
+    const ratio = drawClaimYearRatio(rand)
+    return { claimsIncurred: Math.round(ratio * premiumWritten), claimsCount: 1 + Math.floor(rand() * 3) }
+  })
 
   const years: LossRatioYear[] = written.map((premiumWritten, i) => {
     const isCurrent = i === LOSS_RATIO_HISTORY_YEARS - 1
     const premiumEarned = isCurrent ? Math.round((premiumWritten * monthsElapsed) / 12) : premiumWritten
+    // Pro-rate the current year's claims on the same basis as its premium (the fix) --
+    // a genuinely zero year (not active) stays exactly zero either way.
+    const claimsIncurred = isCurrent ? Math.round((claimsRaw[i].claimsIncurred * monthsElapsed) / 12) : claimsRaw[i].claimsIncurred
     return {
       year: newestYear - (LOSS_RATIO_HISTORY_YEARS - 1 - i),
       premiumWritten,
       premiumEarned,
-      claimsIncurred: claims[i],
-      claimsCount: 1 + Math.floor(rand() * 7),
+      claimsIncurred,
+      claimsCount: claimsRaw[i].claimsCount,
     }
   })
 
@@ -306,15 +372,12 @@ export function getRiskQuality(policy: RiskQualityInput): RiskQuality {
   const operationalGrade = computeOperationalGrade(policy)
   const companyFinancialGrade = verified ? computeCompanyFinancialGrade(policy) : null
 
-  // Seed figures for the current (newest) loss-ratio-history year, from a bell curve
-  // centered on a plausible commercial P&C target (60% mean, 15pt SD -- an assumption,
-  // easy to retune since this is mocked), clamped to a realistic range.
-  const seedLossRatio = clamp(randNormal(rand, 0.6, 0.15), 0.15, 1.3)
+  // Exposure size for the current policy year -- unrelated to whether the policy
+  // claims at all (that's decided inside buildLossRatioHistory, at the policy level).
   const currentPremiumWritten = Math.round(50000 + rand() * 200000)
-  const currentClaimsIncurred = Math.round(seedLossRatio * currentPremiumWritten)
   const policyTenureYears = 1 + Math.floor(rand() * 12)
 
-  const lossRatioHistory = buildLossRatioHistory(rand, policy.renewalDate, currentPremiumWritten, currentClaimsIncurred)
+  const lossRatioHistory = buildLossRatioHistory(rand, policy.renewalDate, currentPremiumWritten)
   const historicalGrade = computeHistoricalGrade(lossRatioHistory.allYears.lossRatio)
 
   // Renewal financials: the renewal-year figure is the same real premium shown in

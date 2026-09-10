@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { formatCurrency, formatCompactCurrency, EMPTY_VALUE } from '@/lib/format'
-import { getRiskQuality, unverifiedCompanyFinancialDetails, type Grade } from '@/lib/mockRiskQuality'
+import { getRiskQuality, unverifiedCompanyFinancialDetails, historicalGradeScaleInfo, type Grade } from '@/lib/mockRiskQuality'
 import FlagDetailPanel, { type FlagEvidence } from '@/components/FlagDetailPanel'
 
 type PolicyDetail = FlagEvidence & {
@@ -249,7 +249,7 @@ export default function RiskQualityPanel({ policyId }: { policyId: string }) {
           />
           <GradeCard
             label="Historical Performance"
-            scaleInfo="Reflects historical claims performance across all available years (the All Years column in Loss Ratio, below)."
+            scaleInfo={historicalGradeScaleInfo()}
             grade={riskQuality.historical.grade}
             details={riskQuality.historical.details}
           />
