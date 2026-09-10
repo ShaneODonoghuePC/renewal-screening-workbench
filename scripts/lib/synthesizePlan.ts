@@ -333,6 +333,7 @@ export async function computeSynthesizePlan(db: Client): Promise<SynthesizePlan>
         // Match invariant above. consolidatedAccounts itself is pure context: it does NOT
         // participate in anyFlagFired below, matching its exclusion from routing/tally.
         const consolidatedDrawn = enforceConsolidatedInvariant({
+          dnbNoMatch,
           consolidatedAccounts: bernoulli(rowRand, flagRates.consolidatedAccounts),
           latestConsolidatedProfitNegative: bernoulli(rowRand, consolidatedProfitNegRate),
           consolidatedAssetsMovedSignificant: bernoulli(rowRand, consolidatedAssetsMovedRate),

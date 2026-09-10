@@ -47,20 +47,36 @@ export const CONSOLIDATED_SCORING_FLAG_KEYS: Array<keyof ConsolidatedBooleans> =
   'latestConsolidatedProfitNegative', 'consolidatedAssetsMovedSignificant',
 ]
 
-// SPEC.md S3.3: the two consolidated flags can only be true where consolidatedAccounts
-// is true -- the real engine leaves them BLANK (could not assess) rather than false when
-// no consolidated accounts exist; this prototype does not model blanks, so a false here
-// stands for "assessed and clean" OR "nothing to assess," collapsed into one value by
-// deliberate simplification (documented, not silently done). Pure: returns a corrected
-// copy, never mutates its argument.
-export function enforceConsolidatedInvariant<T extends ConsolidatedBooleans>(row: T): T {
+// SPEC.md S3.3: two rules, both enforced here.
+// (a) The two consolidated flags can only be true where consolidatedAccounts is true --
+//     the real engine leaves them BLANK (could not assess) rather than false when no
+//     consolidated accounts exist; this prototype does not model blanks, so a false here
+//     stands for "assessed and clean" OR "nothing to assess," collapsed into one value by
+//     deliberate simplification (documented, not silently done).
+// (b) When D&B No Match fires, D&B returned nothing about the company at all --
+//     including whether it has consolidated accounts -- so ALL THREE consolidated
+//     fields must be false, consolidatedAccounts included. **Added 2026-09-16, fixing a
+//     real data bug**: this rule was missing until now, and `raiseConsolidatedRatesPlan.ts`'s
+//     candidate selection never excluded No Match rows, so 7 of the dataset's 40 No
+//     Match policies had `consolidatedAccounts = true` (three of those with a scoring
+//     dependent also true) -- a false "D&B checked and found no consolidated group"
+//     finding on a company D&B never matched. This is a SEPARATE invariant from (a): a
+//     row can violate (b) with consolidatedAccounts itself true, which (a) alone would
+//     never flag (its own check only ever fires when consolidatedAccounts is false).
+// Pure: returns a corrected copy, never mutates its argument.
+export function enforceConsolidatedInvariant<T extends ConsolidatedBooleans & { dnbNoMatch?: boolean }>(row: T): T {
+  if (row.dnbNoMatch) {
+    return { ...row, consolidatedAccounts: false, latestConsolidatedProfitNegative: false, consolidatedAssetsMovedSignificant: false }
+  }
   if (row.consolidatedAccounts) return row
   return { ...row, latestConsolidatedProfitNegative: false, consolidatedAssetsMovedSignificant: false }
 }
 
-// True if this row breaks the invariant above -- a consolidated dependent flag true
-// while consolidatedAccounts is false.
-export function violatesConsolidatedInvariant(row: ConsolidatedBooleans): boolean {
+// True if this row breaks either half of the invariant above.
+export function violatesConsolidatedInvariant(row: ConsolidatedBooleans & { dnbNoMatch?: boolean }): boolean {
+  if (row.dnbNoMatch) {
+    return row.consolidatedAccounts || row.latestConsolidatedProfitNegative || row.consolidatedAssetsMovedSignificant
+  }
   if (row.consolidatedAccounts) return false
   return row.latestConsolidatedProfitNegative || row.consolidatedAssetsMovedSignificant
 }

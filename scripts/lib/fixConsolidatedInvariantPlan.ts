@@ -1,17 +1,25 @@
 // Shared plan-computation logic for correcting existing policies that violate the
-// consolidated-accounts invariant (SPEC.md S3.3/S7.1, added 2026-09-11): the two
-// dependent flags (latestConsolidatedProfitNegative, consolidatedAssetsMovedSignificant)
-// can only be true where consolidatedAccounts is true -- the real engine leaves them
-// BLANK (could not assess) when no consolidated accounts exist; this prototype does not
-// model blanks, so they collapse to false there instead. See scripts/lib/dnbRules.ts.
+// consolidated-accounts invariant (SPEC.md S3.3/S7.1) -- now two rules (see
+// scripts/lib/dnbRules.ts for the full reasoning on both):
+// (a) added 2026-09-11: the two dependent flags (latestConsolidatedProfitNegative,
+//     consolidatedAssetsMovedSignificant) can only be true where consolidatedAccounts
+//     is true.
+// (b) added 2026-09-16, fixing a real data bug this checker did not catch until now:
+//     when dnbNoMatch is true, ALL THREE consolidated fields (consolidatedAccounts
+//     included) must be false -- D&B reported nothing about a company it never
+//     matched. This checker previously skipped any row with consolidatedAccounts =
+//     true outright (`if (row.consolidatedAccounts) continue`), which is exactly why
+//     rule (b) violations were never found: they all have consolidatedAccounts = true
+//     by definition. That skip is gone.
 //
 // Same shape as scripts/lib/fixNoMatchInvariantPlan.ts: computeFixConsolidatedInvariantPlan()
 // only ever issues a SELECT against policies (read-only); applyFixConsolidatedInvariantPlan()
-// is the only place any UPDATE happens. The generator (scripts/lib/synthesizePlan.ts) and
-// the rate-raising plan (scripts/lib/raiseConsolidatedRatesPlan.ts) both enforce this
-// invariant at the point they draw these booleans, so neither can produce a violating row
-// -- this module exists as the same read-only-checker-plus-apply-step safety net the No
-// Match invariant has, even though it is expected to find zero violations in practice.
+// is the only place any UPDATE happens. The generator (scripts/lib/synthesizePlan.ts) now
+// enforces both halves of the invariant at the point it draws these booleans, and
+// scripts/lib/raiseConsolidatedRatesPlan.ts's candidate selection now excludes dnbNoMatch
+// rows (2026-09-16, previously didn't -- the actual source of the 7 violations this file
+// found and corrected) -- this module remains the read-only-checker-plus-apply-step
+// safety net for whatever predates those fixes.
 
 import type { Client } from '@libsql/client'
 import {
@@ -65,7 +73,6 @@ export function computeFixConsolidatedInvariantPlanForRows(allRows: PolicyRow[])
   const corrections: ConsolidatedInvariantCorrection[] = []
 
   for (const row of allRows) {
-    if (row.consolidatedAccounts) continue
     if (!violatesConsolidatedInvariant(row)) continue
 
     const corrected = enforceConsolidatedInvariant(row)
@@ -106,24 +113,24 @@ export function printFixConsolidatedInvariantPlanReport(plan: FixConsolidatedInv
   console.log(`\n=== Consolidated invariant violations found: ${plan.corrections.length} ===`)
   for (const c of plan.corrections) {
     console.log(`  ${c.id} (${c.country}):`)
-    console.log(`    before: profitNeg=${c.before.latestConsolidatedProfitNegative} assetsMoved=${c.before.consolidatedAssetsMovedSignificant} stage2Count=${c.before.stage2FlagCount} reasons="${c.before.flagReasons}"`)
-    console.log(`    after:  profitNeg=${c.after.latestConsolidatedProfitNegative} assetsMoved=${c.after.consolidatedAssetsMovedSignificant} stage2Count=${c.after.stage2FlagCount} reasons="${c.after.flagReasons}"`)
+    console.log(`    before: accounts=${c.before.consolidatedAccounts} profitNeg=${c.before.latestConsolidatedProfitNegative} assetsMoved=${c.before.consolidatedAssetsMovedSignificant} stage2Count=${c.before.stage2FlagCount} reasons="${c.before.flagReasons}"`)
+    console.log(`    after:  accounts=${c.after.consolidatedAccounts} profitNeg=${c.after.latestConsolidatedProfitNegative} assetsMoved=${c.after.consolidatedAssetsMovedSignificant} stage2Count=${c.after.stage2FlagCount} reasons="${c.after.flagReasons}"`)
   }
 }
 
-// The only place any UPDATE happens. Touches exactly the two dependent booleans plus
-// stage2FlagCount/flagReasons, on exactly the rows in plan.corrections -- never
-// consolidatedAccounts itself (never wrong by construction of this checker), never
-// routing (the routing checker, scripts/lib/fixRoutingPlan.ts, is a separate pass).
+// The only place any UPDATE happens. Touches the three consolidated booleans
+// (consolidatedAccounts included, since rule (b) above can correct it too) plus
+// stage2FlagCount/flagReasons, on exactly the rows in plan.corrections -- never routing
+// (the routing checker, scripts/lib/fixRoutingPlan.ts, is a separate pass).
 export async function applyFixConsolidatedInvariantPlan(db: Client, plan: FixConsolidatedInvariantPlan) {
   for (const c of plan.corrections) {
     await db.execute({
       sql: `UPDATE policies SET
-        latestConsolidatedProfitNegative = ?, consolidatedAssetsMovedSignificant = ?,
+        consolidatedAccounts = ?, latestConsolidatedProfitNegative = ?, consolidatedAssetsMovedSignificant = ?,
         stage2FlagCount = ?, flagReasons = ?
       WHERE id = ?`,
       args: [
-        c.after.latestConsolidatedProfitNegative, c.after.consolidatedAssetsMovedSignificant,
+        c.after.consolidatedAccounts, c.after.latestConsolidatedProfitNegative, c.after.consolidatedAssetsMovedSignificant,
         c.after.stage2FlagCount, c.after.flagReasons,
         c.id,
       ],

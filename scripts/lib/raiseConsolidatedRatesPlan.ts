@@ -128,9 +128,15 @@ function planFromRows(allRows: PolicyRow[]): RaiseConsolidatedRatesPlan {
     const consolidatedAccountsBefore = rows.filter((r) => r.consolidatedAccounts).length
 
     // --- Step 1: Consolidated Accounts, ~18% ---
+    // Candidates exclude dnbNoMatch rows (2026-09-16, was missing -- the actual cause of
+    // 7 dnbNoMatch=true rows getting consolidatedAccounts=true when this ran before:
+    // D&B reported nothing about a company it never matched, consolidated accounts
+    // included, so those rows were never eligible in the first place -- see
+    // scripts/lib/dnbRules.ts's enforceConsolidatedInvariant for the invariant this now
+    // can't violate by construction).
     const target = Math.round(rows.length * CONSOLIDATED_ACCOUNTS_TARGET_RATE)
     const needed = Math.max(0, target - consolidatedAccountsBefore)
-    const candidates = rows.filter((r) => !r.consolidatedAccounts).map((r) => r.id).sort()
+    const candidates = rows.filter((r) => !r.consolidatedAccounts && !r.dnbNoMatch).map((r) => r.id).sort()
     const selectedIds = new Set(seededShuffle(candidates, `raise-consolidated-accounts-v1:${country}`).slice(0, needed))
 
     const consolidatedPool = rows.filter((r) => r.consolidatedAccounts || selectedIds.has(r.id))
